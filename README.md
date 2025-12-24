@@ -27,7 +27,7 @@ A modern, dynamic GUI tool for indexing, searching, and managing Wazuh XML rules
 
 2. **Install dependencies**:
    ```bash
-   pip install customtkinter darkdetect
+   pip install customtkinter
    ```
 
 ## 📖 Usage
@@ -54,3 +54,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## 📄 License
 
 This project is licensed under the MIT License.
+
+## ✅ Works can be done
+- [ ] add rule editor or ways to add rules
+- [ ] make cli version on tool

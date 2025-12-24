@@ -43,9 +43,8 @@ A modern, dynamic GUI tool for indexing, searching, and managing Wazuh XML rules
 
 ## 🗄️ Database Structure
 
-The tool creates two local database files:
-- `wazuh_rules_v2.db`: Stores the rules and dynamically generated columns based on XML tags.
-- `file_states`: (Internal) Tracks file hashes and scan timestamps to optimize performance.
+The tool creates one local database files:
+- `wazuh_rules_v2.db`: Stores the rules and dynamically generated columns based on XML tags. Also, (Internal) Tracks file hashes and scan timestamps to optimize performance.
 
 ## 🤝 Contributing
 
@@ -58,3 +57,4 @@ This project is licensed under the MIT License.
 ## ✅ Works can be done
 - [ ] add rule editor or ways to add rules
 - [ ] make cli version on tool
+

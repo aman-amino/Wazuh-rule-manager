@@ -35,6 +35,9 @@ class App(ctk.CTk):
         self.scan_btn = ctk.CTkButton(self.sidebar, text="Scan Rules", command=self.scan_rules)
         self.scan_btn.pack(pady=10, padx=20)
 
+        self.add_rule_btn = ctk.CTkButton(self.sidebar, text="Add New Rule", command=self.add_rule)
+        self.add_rule_btn.pack(pady=10, padx=20)
+
         # Search Filters Section
         self.filter_label = ctk.CTkLabel(self.sidebar, text="Search Columns", font=ctk.CTkFont(size=14, weight="bold"))
         self.filter_label.pack(pady=(20, 5), padx=20)
@@ -57,6 +60,7 @@ class App(ctk.CTk):
         self.main_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
         self.main_frame.grid_columnconfigure(0, weight=1)
         self.main_frame.grid_rowconfigure(1, weight=1)
+        self.main_frame.grid_rowconfigure(3, weight=0)
 
         # Search Bar
         self.search_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
@@ -65,6 +69,9 @@ class App(ctk.CTk):
         self.search_entry = ctk.CTkEntry(self.search_frame, placeholder_text="Search (Auto-search while typing)...")
         self.search_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
         self.search_entry.bind("<KeyRelease>", self.on_search_key)
+
+        self.clear_btn = ctk.CTkButton(self.search_frame, text="Clear", width=80, fg_color="transparent", border_width=1, command=self.clear_search)
+        self.clear_btn.pack(side="right", padx=(10, 0))
 
         self.search_btn = ctk.CTkButton(self.search_frame, text="Search", width=100, command=self.refresh_table)
         self.search_btn.pack(side="right")
@@ -106,6 +113,18 @@ class App(ctk.CTk):
         self.h_scrollbar = ctk.CTkScrollbar(self.main_frame, orientation="horizontal", command=self.tree.xview)
         self.h_scrollbar.grid(row=2, column=0, sticky="ew")
         self.tree.configure(xscrollcommand=self.h_scrollbar.set)
+        self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
+
+        # Detail View Panel
+        self.detail_frame = ctk.CTkFrame(self.main_frame)
+        self.detail_frame.grid(row=3, column=0, sticky="ew", pady=(10, 0))
+
+        self.detail_label = ctk.CTkLabel(self.detail_frame, text="Rule Details", font=ctk.CTkFont(size=14, weight="bold"))
+        self.detail_label.pack(anchor="w", padx=10, pady=5)
+
+        self.detail_text = tk.Text(self.detail_frame, height=8, bg="#2b2b2b", fg="white", font=("Segoe UI", 10), borderwidth=0)
+        self.detail_text.pack(fill="x", padx=10, pady=(0, 10))
+        self.detail_text.configure(state="disabled")
 
         self.search_timer = None
         self.current_folder = ""
@@ -115,6 +134,29 @@ class App(ctk.CTk):
         if self.search_timer:
             self.after_cancel(self.search_timer)
         self.search_timer = self.after(400, self.refresh_table)
+
+    def clear_search(self):
+        self.search_entry.delete(0, tk.END)
+        self.refresh_table()
+
+    def on_tree_select(self, event):
+        selected_item = self.tree.selection()
+        if not selected_item:
+            return
+
+        values = self.tree.item(selected_item[0])["values"]
+        columns = self.tree["columns"]
+
+        self.detail_text.configure(state="normal")
+        self.detail_text.delete("1.0", tk.END)
+
+        for col, val in zip(columns, values):
+            if val is not None and val != "":
+                self.detail_text.insert(tk.END, f"{col.replace('_', ' ').title()}: ", "bold")
+                self.detail_text.insert(tk.END, f"{val}\n")
+
+        self.detail_text.tag_configure("bold", font=("Segoe UI", 10, "bold"))
+        self.detail_text.configure(state="disabled")
 
     def update_filter_list(self, columns):
         for widget in self.scrollable_filters.winfo_children():
@@ -134,6 +176,30 @@ class App(ctk.CTk):
         if folder:
             self.current_folder = folder
             messagebox.showinfo("Folder Selected", f"Selected: {folder}")
+
+    def add_rule(self):
+        if not self.current_folder:
+            messagebox.showwarning("Warning", "Please select a folder first.")
+            return
+
+        dialog = AddRuleDialog(self)
+        self.wait_window(dialog)
+
+        if dialog.result:
+            filename = f"custom_rule_{dialog.result['rule_id']}.xml"
+            filepath = os.path.join(self.current_folder, filename)
+
+            if os.path.exists(filepath):
+                if not messagebox.askyesno("Confirm Overwrite", f"File {filename} already exists. Overwrite?"):
+                    return
+
+            try:
+                from .parser import create_rule_xml
+                create_rule_xml(dialog.result, filepath)
+                messagebox.showinfo("Success", f"Rule saved to {filename}")
+                self.scan_rules() # Refresh list
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to save rule: {e}")
 
     def scan_rules(self):
         if not self.current_folder:
@@ -157,7 +223,11 @@ class App(ctk.CTk):
             messagebox.showinfo("Scan Complete", "No changes detected. Database is up to date.")
             return
 
-        for full_path, rel_path, f_hash in files_to_scan:
+        total_files = len(files_to_scan)
+        for i, (full_path, rel_path, f_hash) in enumerate(files_to_scan):
+            self.files_label.configure(text=f"Scanning: {i+1}/{total_files}")
+            self.update_idletasks()
+
             rules = parse_wazuh_xml(full_path, self.current_folder)
             self.db.save_rules(rules)
             self.db.update_file_state(rel_path, f_hash)
@@ -199,3 +269,37 @@ class App(ctk.CTk):
             cursor.execute("SELECT COUNT(*) FROM file_states")
             file_count = cursor.fetchone()[0]
             self.files_label.configure(text=f"Files: {file_count}")
+
+class AddRuleDialog(ctk.CTkToplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("Add New Rule")
+        self.geometry("500x600")
+        self.result = None
+
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        self.frame = ctk.CTkFrame(self)
+        self.frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        self.frame.grid_columnconfigure(1, weight=1)
+
+        fields = ["Rule ID", "Level", "Description", "Match", "Group"]
+        self.entries = {}
+
+        for i, field in enumerate(fields):
+            label = ctk.CTkLabel(self.frame, text=field)
+            label.grid(row=i, column=0, padx=10, pady=10, sticky="w")
+            entry = ctk.CTkEntry(self.frame)
+            entry.grid(row=i, column=1, padx=10, pady=10, sticky="ew")
+            self.entries[field] = entry
+
+        self.save_btn = ctk.CTkButton(self.frame, text="Save", command=self.save)
+        self.save_btn.grid(row=len(fields), column=0, columnspan=2, pady=20)
+
+    def save(self):
+        self.result = {k.lower().replace(" ", "_"): v.get() for k, v in self.entries.items()}
+        if not self.result["rule_id"]:
+            messagebox.showwarning("Warning", "Rule ID is required.")
+            return
+        self.destroy()

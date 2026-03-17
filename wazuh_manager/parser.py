@@ -82,3 +82,27 @@ def parse_wazuh_xml(filepath, base_dir):
 
     process_element(root, root_group)
     return rules_found
+
+def create_rule_xml(rule_data, filepath):
+    """
+    Creates a new Wazuh XML rule file from the provided data.
+    """
+    root = ET.Element("group")
+    if rule_data.get("group"):
+        root.set("name", rule_data["group"])
+
+    rule = ET.SubElement(root, "rule")
+    rule.set("id", rule_data["rule_id"])
+    if rule_data.get("level"):
+        rule.set("level", rule_data["level"])
+
+    for key, value in rule_data.items():
+        if key not in ["rule_id", "level", "group"] and value:
+            child = ET.SubElement(rule, key)
+            child.text = value
+
+    tree = ET.ElementTree(root)
+    # Wazuh rules often have a specific structure, here we just use basic formatting
+    if hasattr(ET, "indent"):
+        ET.indent(tree, space="  ", level=0)
+    tree.write(filepath, encoding="utf-8", xml_declaration=True)

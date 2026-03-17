@@ -75,6 +75,12 @@ class DatabaseManager:
                 cursor.execute(f"INSERT INTO rules ({col_names}) VALUES ({placeholders})", rule)
             conn.commit()
 
+    def delete_rule(self, rule_id, relative_path):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM rules WHERE rule_id = ? AND relative_path = ?", (rule_id, relative_path))
+            conn.commit()
+
     def update_file_state(self, relative_path, file_hash):
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -91,9 +97,19 @@ class DatabaseManager:
             result = cursor.fetchone()
             return result[0] if result else None
 
-    def search_rules(self, query_str, target_columns=None):
+    def search_rules(self, query_str, target_columns=None, show_duplicates=False):
         columns = self.get_columns()
-        if not query_str:
+
+        if show_duplicates:
+            sql = """
+                SELECT * FROM rules
+                WHERE rule_id IN (
+                    SELECT rule_id FROM rules
+                    GROUP BY rule_id HAVING COUNT(*) > 1
+                )
+            """
+            params = []
+        elif not query_str:
             sql = "SELECT * FROM rules"
             params = []
         else:

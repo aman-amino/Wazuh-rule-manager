@@ -107,6 +107,42 @@ def create_rule_xml(rule_data, filepath):
         ET.indent(tree, space="  ", level=0)
     tree.write(filepath, encoding="utf-8", xml_declaration=True)
 
+def delete_rule_from_xml(rule_id, filepath):
+    """
+    Deletes a rule with the given ID from the XML file.
+    If the file becomes empty (no rules left), it handles it accordingly.
+    """
+    try:
+        tree = ET.parse(filepath)
+        root = tree.getroot()
+
+        # Find the rule to delete
+        rules = root.findall(".//rule")
+        target_rule = None
+
+        # Build a parent map
+        parent_map = {c: p for p in root.iter() for c in p}
+
+        for r in rules:
+            if r.attrib.get("id") == str(rule_id):
+                target_rule = r
+                break
+
+        if target_rule is not None:
+            parent = parent_map.get(target_rule)
+            if parent is not None:
+                parent.remove(target_rule)
+
+                # If the root is now empty, we might keep it or delete it.
+                # For simplicity, we just save the modified tree.
+                if hasattr(ET, "indent"):
+                    ET.indent(tree, space="  ", level=0)
+                tree.write(filepath, encoding="utf-8", xml_declaration=True)
+                return True
+    except Exception as e:
+        print(f"Error deleting rule {rule_id} from {filepath}: {e}")
+    return False
+
 def update_rule_xml(rule_id, updated_data, filepath):
     """
     Updates an existing rule in an XML file.

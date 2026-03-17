@@ -38,12 +38,6 @@ class App(ctk.CTk):
         self.add_rule_btn = ctk.CTkButton(self.sidebar, text="Add New Rule", command=self.add_rule)
         self.add_rule_btn.pack(pady=10, padx=20)
 
-        self.edit_rule_btn = ctk.CTkButton(self.sidebar, text="Edit Selected Rule", command=self.edit_rule)
-        self.edit_rule_btn.pack(pady=10, padx=20)
-
-        self.export_csv_btn = ctk.CTkButton(self.sidebar, text="Export Results to CSV", command=self.export_to_csv)
-        self.export_csv_btn.pack(pady=10, padx=20)
-
         # Search Filters Section
         self.filter_label = ctk.CTkLabel(self.sidebar, text="Search Columns", font=ctk.CTkFont(size=14, weight="bold"))
         self.filter_label.pack(pady=(20, 5), padx=20)
@@ -65,8 +59,8 @@ class App(ctk.CTk):
         self.main_frame = ctk.CTkFrame(self)
         self.main_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
         self.main_frame.grid_columnconfigure(0, weight=1)
-        self.main_frame.grid_rowconfigure(2, weight=1) # Treeview
-        self.main_frame.grid_rowconfigure(1, weight=0) # Detail Panel
+        self.main_frame.grid_rowconfigure(1, weight=1)
+        self.main_frame.grid_rowconfigure(3, weight=0)
 
         # Search Bar
         self.search_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
@@ -82,33 +76,9 @@ class App(ctk.CTk):
         self.search_btn = ctk.CTkButton(self.search_frame, text="Search", width=100, command=self.refresh_table)
         self.search_btn.pack(side="right")
 
-        # Detail View Panel (Moved to top)
-        self.detail_frame = ctk.CTkFrame(self.main_frame)
-        self.detail_frame.grid(row=1, column=0, sticky="ew", pady=(0, 10))
-
-        self.detail_header = ctk.CTkFrame(self.detail_frame, fg_color="transparent")
-        self.detail_header.pack(fill="x", padx=10, pady=5)
-
-        self.detail_label = ctk.CTkLabel(self.detail_header, text="Rule Details & Editor", font=ctk.CTkFont(size=14, weight="bold"))
-        self.detail_label.pack(side="left")
-
-        self.save_detail_btn = ctk.CTkButton(self.detail_header, text="Save Edits", width=100, command=self.save_detail_edits)
-        self.save_detail_btn.pack(side="right", padx=5)
-
-        self.height_label = ctk.CTkLabel(self.detail_header, text="Height:", font=ctk.CTkFont(size=11))
-        self.height_label.pack(side="right", padx=(10, 5))
-
-        self.height_slider = ctk.CTkSlider(self.detail_header, from_=4, to_=25, number_of_steps=21, width=100, command=self.change_detail_height)
-        self.height_slider.pack(side="right")
-        self.height_slider.set(8)
-
-        self.detail_text = tk.Text(self.detail_frame, height=8, bg="#2b2b2b", fg="white", font=("Segoe UI", 10), borderwidth=0, undo=True)
-        self.detail_text.pack(fill="x", padx=10, pady=(0, 10))
-        self.detail_text.configure(state="disabled")
-
         # Table (Using standard Treeview with custom styling)
         self.tree_container = ctk.CTkFrame(self.main_frame)
-        self.tree_container.grid(row=2, column=0, sticky="nsew")
+        self.tree_container.grid(row=1, column=0, sticky="nsew")
 
         style = ttk.Style()
         style.theme_use("default")
@@ -141,9 +111,20 @@ class App(ctk.CTk):
         self.tree.configure(yscrollcommand=self.scrollbar.set)
 
         self.h_scrollbar = ctk.CTkScrollbar(self.main_frame, orientation="horizontal", command=self.tree.xview)
-        self.h_scrollbar.grid(row=3, column=0, sticky="ew")
+        self.h_scrollbar.grid(row=2, column=0, sticky="ew")
         self.tree.configure(xscrollcommand=self.h_scrollbar.set)
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
+
+        # Detail View Panel
+        self.detail_frame = ctk.CTkFrame(self.main_frame)
+        self.detail_frame.grid(row=3, column=0, sticky="ew", pady=(10, 0))
+
+        self.detail_label = ctk.CTkLabel(self.detail_frame, text="Rule Details", font=ctk.CTkFont(size=14, weight="bold"))
+        self.detail_label.pack(anchor="w", padx=10, pady=5)
+
+        self.detail_text = tk.Text(self.detail_frame, height=8, bg="#2b2b2b", fg="white", font=("Segoe UI", 10), borderwidth=0)
+        self.detail_text.pack(fill="x", padx=10, pady=(0, 10))
+        self.detail_text.configure(state="disabled")
 
         self.search_timer = None
         self.current_folder = ""
@@ -157,41 +138,6 @@ class App(ctk.CTk):
     def clear_search(self):
         self.search_entry.delete(0, tk.END)
         self.refresh_table()
-
-    def change_detail_height(self, value):
-        self.detail_text.configure(height=int(value))
-
-    def save_detail_edits(self):
-        selected_item = self.tree.selection()
-        if not selected_item:
-            messagebox.showwarning("Warning", "Please select a rule first.")
-            return
-
-        values = self.tree.item(selected_item[0])["values"]
-        columns = self.tree["columns"]
-        rule_data = dict(zip(columns, values))
-
-        content = self.detail_text.get("1.0", tk.END).strip()
-        updated_data = {}
-
-        for line in content.split("\n"):
-            if ":" in line:
-                key_raw, val = line.split(":", 1)
-                key = key_raw.strip().lower().replace(" ", "_")
-                updated_data[key] = val.strip()
-
-        if not updated_data.get("rule_id"):
-             messagebox.showerror("Error", "Rule ID cannot be empty in edits.")
-             return
-
-        filepath = os.path.join(self.current_folder, rule_data["relative_path"])
-        try:
-            from .parser import update_rule_xml
-            update_rule_xml(rule_data["rule_id"], updated_data, filepath)
-            messagebox.showinfo("Success", "Rule updated from details panel.")
-            self.scan_rules()
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to update: {e}")
 
     def on_tree_select(self, event):
         selected_item = self.tree.selection()
@@ -210,7 +156,7 @@ class App(ctk.CTk):
                 self.detail_text.insert(tk.END, f"{val}\n")
 
         self.detail_text.tag_configure("bold", font=("Segoe UI", 10, "bold"))
-        self.detail_text.configure(state="normal")
+        self.detail_text.configure(state="disabled")
 
     def update_filter_list(self, columns):
         for widget in self.scrollable_filters.winfo_children():
@@ -236,8 +182,7 @@ class App(ctk.CTk):
             messagebox.showwarning("Warning", "Please select a folder first.")
             return
 
-        columns = self.db.get_columns()
-        dialog = RuleDialog(self, title="Add New Rule", columns=columns)
+        dialog = AddRuleDialog(self)
         self.wait_window(dialog)
 
         if dialog.result:
@@ -255,57 +200,6 @@ class App(ctk.CTk):
                 self.scan_rules() # Refresh list
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to save rule: {e}")
-
-    def export_to_csv(self):
-        selected_cols = [col for col, var in self.column_vars.items() if var.get()]
-        search_term = self.search_entry.get()
-        data, columns = self.db.search_rules(search_term, target_columns=selected_cols)
-
-        if not data:
-            messagebox.showinfo("Export", "No results to export.")
-            return
-
-        filepath = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
-        if not filepath:
-            return
-
-        try:
-            import csv
-            with open(filepath, "w", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                writer.writerow(columns)
-                writer.writerows(data)
-            messagebox.showinfo("Success", f"Data exported to {filepath}")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to export data: {e}")
-
-    def edit_rule(self):
-        selected_item = self.tree.selection()
-        if not selected_item:
-            messagebox.showwarning("Warning", "Please select a rule to edit.")
-            return
-
-        values = self.tree.item(selected_item[0])["values"]
-        columns = self.tree["columns"]
-        rule_data = dict(zip(columns, values))
-
-        if not rule_data.get("relative_path"):
-            messagebox.showerror("Error", "Could not determine file path for rule.")
-            return
-
-        all_cols = self.db.get_columns()
-        dialog = RuleDialog(self, title="Edit Rule", initial_data=rule_data, columns=all_cols)
-        self.wait_window(dialog)
-
-        if dialog.result:
-            filepath = os.path.join(self.current_folder, rule_data["relative_path"])
-            try:
-                from .parser import update_rule_xml
-                update_rule_xml(rule_data["rule_id"], dialog.result, filepath)
-                messagebox.showinfo("Success", "Rule updated successfully.")
-                self.scan_rules() # Refresh list
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to update rule: {e}")
 
     def scan_rules(self):
         if not self.current_folder:
@@ -376,92 +270,36 @@ class App(ctk.CTk):
             file_count = cursor.fetchone()[0]
             self.files_label.configure(text=f"Files: {file_count}")
 
-class RuleDialog(ctk.CTkToplevel):
-    def __init__(self, parent, title="Rule Dialog", initial_data=None, columns=None):
+class AddRuleDialog(ctk.CTkToplevel):
+    def __init__(self, parent):
         super().__init__(parent)
-        self.title(title)
-        self.geometry("600x800")
+        self.title("Add New Rule")
+        self.geometry("500x600")
         self.result = None
-        self.initial_data = initial_data or {}
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        self.main_container = ctk.CTkFrame(self)
-        self.main_container.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
-        self.main_container.grid_columnconfigure(0, weight=1)
-        self.main_container.grid_rowconfigure(0, weight=1)
+        self.frame = ctk.CTkFrame(self)
+        self.frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        self.frame.grid_columnconfigure(1, weight=1)
 
-        self.scrollable_frame = ctk.CTkScrollableFrame(self.main_container, label_text="Rule Attributes")
-        self.scrollable_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-        self.scrollable_frame.grid_columnconfigure(1, weight=1)
-
-        # Exclude internal/read-only columns
-        excluded = ["id", "is_rule", "filename", "relative_path"]
-
-        # Determine fields to show
-        self.fields = ["rule_id", "level", "description", "match", "group"]
-        if columns:
-            for col in columns:
-                if col not in excluded and col not in self.fields:
-                    self.fields.append(col)
-
-        # Ensure all initial data keys are also included if they aren't in columns
-        for key in self.initial_data.keys():
-            if key not in excluded and key not in self.fields:
-                self.fields.append(key)
-
+        fields = ["Rule ID", "Level", "Description", "Match", "Group"]
         self.entries = {}
-        for i, field in enumerate(self.fields):
-            self.add_field_row(field, i)
 
-        # Custom Field Section
-        self.custom_field_frame = ctk.CTkFrame(self.main_container)
-        self.custom_field_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10))
+        for i, field in enumerate(fields):
+            label = ctk.CTkLabel(self.frame, text=field)
+            label.grid(row=i, column=0, padx=10, pady=10, sticky="w")
+            entry = ctk.CTkEntry(self.frame)
+            entry.grid(row=i, column=1, padx=10, pady=10, sticky="ew")
+            self.entries[field] = entry
 
-        self.new_field_entry = ctk.CTkEntry(self.custom_field_frame, placeholder_text="New field name (e.g. mitre_id)")
-        self.new_field_entry.pack(side="left", fill="x", expand=True, padx=5, pady=5)
-
-        self.add_field_btn = ctk.CTkButton(self.custom_field_frame, text="Add Field", width=80, command=self.add_custom_field)
-        self.add_field_btn.pack(side="right", padx=5, pady=5)
-
-        self.save_btn = ctk.CTkButton(self.main_container, text="Save Rule", command=self.save)
-        self.save_btn.grid(row=2, column=0, pady=10)
-
-    def add_field_row(self, field, row_idx, value=None):
-        display_name = field.replace("_", " ").title()
-        label = ctk.CTkLabel(self.scrollable_frame, text=display_name)
-        label.grid(row=row_idx, column=0, padx=10, pady=5, sticky="w")
-
-        entry = ctk.CTkEntry(self.scrollable_frame)
-        entry.grid(row=row_idx, column=1, padx=10, pady=5, sticky="ew")
-
-        # Pre-fill value
-        if value is not None:
-            entry.insert(0, str(value))
-        elif field in self.initial_data:
-            entry.insert(0, str(self.initial_data[field]))
-        elif field == "level" and "rule_level" in self.initial_data:
-            entry.insert(0, str(self.initial_data["rule_level"]))
-
-        self.entries[field] = entry
-
-    def add_custom_field(self):
-        new_field = self.new_field_entry.get().strip().lower().replace(" ", "_")
-        if not new_field:
-            return
-        if new_field in self.entries:
-            messagebox.showwarning("Warning", f"Field '{new_field}' already exists.")
-            return
-
-        row_idx = len(self.entries)
-        self.add_field_row(new_field, row_idx)
-        self.new_field_entry.delete(0, tk.END)
-        self.fields.append(new_field)
+        self.save_btn = ctk.CTkButton(self.frame, text="Save", command=self.save)
+        self.save_btn.grid(row=len(fields), column=0, columnspan=2, pady=20)
 
     def save(self):
-        self.result = {k: v.get() for k, v in self.entries.items() if v.get()}
-        if not self.result.get("rule_id"):
+        self.result = {k.lower().replace(" ", "_"): v.get() for k, v in self.entries.items()}
+        if not self.result["rule_id"]:
             messagebox.showwarning("Warning", "Rule ID is required.")
             return
         self.destroy()

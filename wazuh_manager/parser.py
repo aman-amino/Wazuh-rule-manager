@@ -1,0 +1,84 @@
+import os
+import hashlib
+import xml.etree.ElementTree as ET
+
+def get_file_hash(filepath):
+    hasher = hashlib.sha256()
+    with open(filepath, 'rb') as f:
+        buf = f.read(65536)
+        while len(buf) > 0:
+            hasher.update(buf)
+            buf = f.read(65536)
+    return hasher.hexdigest()
+
+def parse_wazuh_xml(filepath, base_dir):
+    rel_path = os.path.relpath(filepath, base_dir)
+    filename = os.path.basename(filepath)
+
+    try:
+        tree = ET.parse(filepath)
+        root = tree.getroot()
+    except Exception as e:
+        print(f"Error parsing {filepath}: {e}")
+        return []
+
+    rules_found = []
+
+    # Propagate group name if root is <group>
+    root_group = None
+    if root.tag == "group":
+        root_group = root.attrib.get("name")
+
+    def process_element(elem, current_group):
+        # Propagation logic: if we hit a group tag, it updates the group context
+        # But for Wazuh, <group> tags wrap rules.
+        group_to_use = current_group
+        if elem.tag == "group":
+            group_to_use = elem.attrib.get("name") or current_group
+
+        if elem.tag == "rule":
+            rule_data = {
+                "rule_id": elem.attrib.get("id"),
+                "is_rule": 1,
+                "filename": filename,
+                "relative_path": rel_path
+            }
+            if group_to_use:
+                rule_data["group"] = group_to_use
+
+            # Add other attributes from <rule> tag
+            for attr, val in elem.attrib.items():
+                if attr != "id":
+                    rule_data[f"rule_{attr}"] = val
+
+            # Process children of <rule>
+            for child in elem:
+                tag_name = child.tag
+                tag_value = child.text.strip() if child.text else ""
+
+                # Special handling for nested tags within rule
+                if tag_name in rule_data:
+                    # If multiple tags like <match>, concatenate values
+                    if rule_data[tag_name] and tag_value:
+                        rule_data[tag_name] = f"{rule_data[tag_name]}, {tag_value}"
+                    elif tag_value:
+                        rule_data[tag_name] = tag_value
+                else:
+                    rule_data[tag_name] = tag_value
+
+                # Capture child attributes
+                for c_attr, c_val in child.attrib.items():
+                    attr_col = f"{tag_name}_{c_attr}"
+                    rule_data[attr_col] = c_val
+
+            rules_found.append(rule_data)
+
+        # Recursively process children
+        for child in elem:
+            # If the current element is a rule, we've already handled its children as tags
+            # unless there's a nested structure we didn't expect.
+            if elem.tag != "rule":
+                process_element(child, group_to_use)
+
+    process_element(root, root_group)
+    return rules_found

@@ -1,5 +1,4 @@
 import sys
-import argparse
 from wazuh_manager.gui import App
 from wazuh_manager.cli import run_cli
 

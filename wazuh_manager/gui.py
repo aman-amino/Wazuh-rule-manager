@@ -130,7 +130,7 @@ class App(ctk.CTk):
         self.summary_label = ctk.CTkLabel(self.summary_frame, text="Select a rule to see details", font=ctk.CTkFont(size=16, weight="bold"))
         self.summary_label.pack(side="top", anchor="w", pady=(5, 5))
 
-        self.summary_scroll = ctk.CTkScrollableFrame(self.summary_frame, height=250, label_text="")
+        self.summary_scroll = ctk.CTkScrollableFrame(self.summary_frame, height=220, label_text="Rule Details Summary")
         self.summary_scroll.pack(fill="both", expand=True)
 
         # Table Container
@@ -285,7 +285,7 @@ class App(ctk.CTk):
         summary_grid = ctk.CTkFrame(self.summary_scroll, fg_color="transparent")
         summary_grid.pack(fill="both", expand=True, padx=5, pady=5)
         for i in range(3):
-            summary_grid.grid_columnconfigure(i, weight=1, uniform="summary")
+            summary_grid.grid_columnconfigure(i, weight=1)
 
         all_display_cols = important + [c for c in columns if c not in important and c not in ["id", "is_rule", "filename", "relative_path"]]
 
@@ -322,6 +322,7 @@ class App(ctk.CTk):
             entry = ctk.CTkEntry(self.detail_scroll, height=25)
             entry.grid(row=i, column=1, padx=5, pady=2, sticky="ew")
             entry.insert(0, str(val))
+            
             self.detail_entries[col] = entry
 
     def update_filter_list(self, columns):

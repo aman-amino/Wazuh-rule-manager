@@ -315,6 +315,7 @@ class App(ctk.CTk):
             entry = ctk.CTkEntry(self.detail_scroll, height=25)
             entry.grid(row=i, column=1, padx=5, pady=2, sticky="ew")
             entry.insert(0, str(val))
+            
             self.detail_entries[col] = entry
 
     def update_filter_list(self, columns):

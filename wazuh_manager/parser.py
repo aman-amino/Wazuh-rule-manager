@@ -1,6 +1,33 @@
 import os
 import hashlib
 import xml.etree.ElementTree as ET
+import re
+
+def _parse_multi_root_xml(filepath):
+    """Parses an XML file that might have multiple root elements by wrapping them."""
+    with open(filepath, 'r', encoding='utf-8') as f:
+        xml_content = f.read()
+
+    # Remove XML declaration if present to avoid conflicts when wrapping
+    xml_content = re.sub(r'<\?xml.*?\?>', '', xml_content)
+    wrapped_xml = f"<root>{xml_content}</root>"
+    return ET.fromstring(wrapped_xml)
+
+def _write_multi_root_xml(root, filepath):
+    """Writes back a multi-root structure by stripping the wrapper."""
+    # Create a string representation of the root
+    tree = ET.ElementTree(root)
+    if hasattr(ET, "indent"):
+        ET.indent(tree, space="  ", level=0)
+
+    # Get the inner XML (children of <root>)
+    inner_xmls = []
+    for child in root:
+        inner_xmls.append(ET.tostring(child, encoding='unicode'))
+
+    final_xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + "\n".join(inner_xmls)
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(final_xml)
 
 def get_file_hash(filepath):
     hasher = hashlib.sha256()
@@ -16,8 +43,7 @@ def parse_wazuh_xml(filepath, base_dir):
     filename = os.path.basename(filepath)
 
     try:
-        tree = ET.parse(filepath)
-        root = tree.getroot()
+        root = _parse_multi_root_xml(filepath)
     except Exception as e:
         print(f"Error parsing {filepath}: {e}")
         return []
@@ -26,12 +52,9 @@ def parse_wazuh_xml(filepath, base_dir):
 
     # Propagate group name if root is <group>
     root_group = None
-    if root.tag == "group":
-        root_group = root.attrib.get("name")
+    # Note: root is now <root>, children are <group> or <rule>
 
     def process_element(elem, current_group):
-        # Propagation logic: if we hit a group tag, it updates the group context
-        # But for Wazuh, <group> tags wrap rules.
         group_to_use = current_group
         if elem.tag == "group":
             group_to_use = elem.attrib.get("name") or current_group
@@ -46,19 +69,15 @@ def parse_wazuh_xml(filepath, base_dir):
             if group_to_use:
                 rule_data["group"] = group_to_use
 
-            # Add other attributes from <rule> tag
             for attr, val in elem.attrib.items():
                 if attr != "id":
                     rule_data[f"rule_{attr}"] = val
 
-            # Process children of <rule>
             for child in elem:
                 tag_name = child.tag
                 tag_value = child.text.strip() if child.text else ""
 
-                # Special handling for nested tags within rule
                 if tag_name in rule_data:
-                    # If multiple tags like <match>, concatenate values
                     if rule_data[tag_name] and tag_value:
                         rule_data[tag_name] = f"{rule_data[tag_name]}, {tag_value}"
                     elif tag_value:
@@ -66,21 +85,17 @@ def parse_wazuh_xml(filepath, base_dir):
                 else:
                     rule_data[tag_name] = tag_value
 
-                # Capture child attributes
                 for c_attr, c_val in child.attrib.items():
                     attr_col = f"{tag_name}_{c_attr}"
                     rule_data[attr_col] = c_val
 
             rules_found.append(rule_data)
 
-        # Recursively process children
         for child in elem:
-            # If the current element is a rule, we've already handled its children as tags
-            # unless there's a nested structure we didn't expect.
             if elem.tag != "rule":
                 process_element(child, group_to_use)
 
-    process_element(root, root_group)
+    process_element(root, None)
     return rules_found
 
 def create_rule_xml(rule_data, filepath):
@@ -102,25 +117,15 @@ def create_rule_xml(rule_data, filepath):
             child.text = value
 
     tree = ET.ElementTree(root)
-    # Wazuh rules often have a specific structure, here we just use basic formatting
     if hasattr(ET, "indent"):
         ET.indent(tree, space="  ", level=0)
     tree.write(filepath, encoding="utf-8", xml_declaration=True)
 
 def delete_rule_from_xml(rule_id, filepath):
-    """
-    Deletes a rule with the given ID from the XML file.
-    If the file becomes empty (no rules left), it handles it accordingly.
-    """
     try:
-        tree = ET.parse(filepath)
-        root = tree.getroot()
-
-        # Find the rule to delete
+        root = _parse_multi_root_xml(filepath)
         rules = root.findall(".//rule")
         target_rule = None
-
-        # Build a parent map
         parent_map = {c: p for p in root.iter() for c in p}
 
         for r in rules:
@@ -132,25 +137,14 @@ def delete_rule_from_xml(rule_id, filepath):
             parent = parent_map.get(target_rule)
             if parent is not None:
                 parent.remove(target_rule)
-
-                # If the root is now empty, we might keep it or delete it.
-                # For simplicity, we just save the modified tree.
-                if hasattr(ET, "indent"):
-                    ET.indent(tree, space="  ", level=0)
-                tree.write(filepath, encoding="utf-8", xml_declaration=True)
+                _write_multi_root_xml(root, filepath)
                 return True
     except Exception as e:
         print(f"Error deleting rule {rule_id} from {filepath}: {e}")
     return False
 
 def update_rule_xml(rule_id, updated_data, filepath):
-    """
-    Updates an existing rule in an XML file.
-    """
-    tree = ET.parse(filepath)
-    root = tree.getroot()
-
-    # Support both flat and grouped rules
+    root = _parse_multi_root_xml(filepath)
     rules = root.findall(".//rule")
     target_rule = None
     for r in rules:
@@ -161,11 +155,9 @@ def update_rule_xml(rule_id, updated_data, filepath):
     if target_rule is None:
         raise ValueError(f"Rule with ID {rule_id} not found in {filepath}")
 
-    # Update attributes
     if updated_data.get("level"):
         target_rule.set("level", updated_data["level"])
 
-    # Update children
     for key, value in updated_data.items():
         if key not in ["rule_id", "level", "group"]:
             child = target_rule.find(key)
@@ -178,6 +170,4 @@ def update_rule_xml(rule_id, updated_data, filepath):
                 child = ET.SubElement(target_rule, key)
                 child.text = value
 
-    if hasattr(ET, "indent"):
-        ET.indent(tree, space="  ", level=0)
-    tree.write(filepath, encoding="utf-8", xml_declaration=True)
+    _write_multi_root_xml(root, filepath)

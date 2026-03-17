@@ -13,33 +13,45 @@ class App(ctk.CTk):
         self.db = DatabaseManager(DB_NAME)
 
         self.title("Wazuh Rule Manager")
-        self.geometry("1400x900")
+        self.geometry("1600x900")
 
         # Appearance
         ctk.set_appearance_mode("Dark")
         ctk.set_default_color_theme("blue")
 
-        self.grid_columnconfigure(1, weight=1)
+        # Layout: Sidebar (0), Main (1), Detail (2)
+        self.grid_columnconfigure(0, weight=0) # Sidebar
+        self.grid_columnconfigure(1, weight=3) # Main Table
+        self.grid_columnconfigure(2, weight=1) # Detail Panel
         self.grid_rowconfigure(0, weight=1)
 
-        # Sidebar
+        # --- Sidebar ---
         self.sidebar = ctk.CTkFrame(self, width=250, corner_radius=0)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
 
-        self.logo_label = ctk.CTkLabel(self.sidebar, text="Rule Manager", font=ctk.CTkFont(size=20, weight="bold"))
+        self.logo_label = ctk.CTkLabel(self.sidebar, text="Rule Manager", font=ctk.CTkFont(size=22, weight="bold"))
         self.logo_label.pack(pady=20, padx=20)
 
         self.select_folder_btn = ctk.CTkButton(self.sidebar, text="Select Folder", command=self.select_folder)
-        self.select_folder_btn.pack(pady=10, padx=20)
+        self.select_folder_btn.pack(pady=8, padx=20)
 
         self.scan_btn = ctk.CTkButton(self.sidebar, text="Scan Rules", command=self.scan_rules)
-        self.scan_btn.pack(pady=10, padx=20)
+        self.scan_btn.pack(pady=8, padx=20)
 
         self.add_rule_btn = ctk.CTkButton(self.sidebar, text="Add New Rule", command=self.add_rule)
-        self.add_rule_btn.pack(pady=10, padx=20)
+        self.add_rule_btn.pack(pady=8, padx=20)
 
         self.edit_rule_btn = ctk.CTkButton(self.sidebar, text="Edit Selected Rule", command=self.edit_rule)
-        self.edit_rule_btn.pack(pady=10, padx=20)
+        self.edit_rule_btn.pack(pady=8, padx=20)
+
+        self.clone_rule_btn = ctk.CTkButton(self.sidebar, text="Clone Selected Rule", command=self.clone_rule)
+        self.clone_rule_btn.pack(pady=8, padx=20)
+
+        self.delete_rule_btn = ctk.CTkButton(self.sidebar, text="Delete Selected Rule", command=self.delete_rule, fg_color="#d9534f", hover_color="#c9302c")
+        self.delete_rule_btn.pack(pady=8, padx=20)
+
+        self.show_duplicates_btn = ctk.CTkButton(self.sidebar, text="Show Duplicates", command=self.show_duplicates)
+        self.show_duplicates_btn.pack(pady=8, padx=20)
 
         self.clone_rule_btn = ctk.CTkButton(self.sidebar, text="Clone Selected Rule", command=self.clone_rule)
         self.clone_rule_btn.pack(pady=10, padx=20)
@@ -51,7 +63,15 @@ class App(ctk.CTk):
         self.show_duplicates_btn.pack(pady=10, padx=20)
 
         self.export_csv_btn = ctk.CTkButton(self.sidebar, text="Export Results to CSV", command=self.export_to_csv)
-        self.export_csv_btn.pack(pady=10, padx=20)
+        self.export_csv_btn.pack(pady=8, padx=20)
+
+        # Appearance Mode
+        self.appearance_label = ctk.CTkLabel(self.sidebar, text="Appearance Mode:", anchor="w")
+        self.appearance_label.pack(pady=(20, 0), padx=20)
+        self.appearance_optionemenu = ctk.CTkOptionMenu(self.sidebar, values=["Light", "Dark", "System"],
+                                                        command=self.change_appearance_mode_event)
+        self.appearance_optionemenu.pack(pady=10, padx=20)
+        self.appearance_optionemenu.set("Dark")
 
         # Appearance Mode
         self.appearance_label = ctk.CTkLabel(self.sidebar, text="Appearance Mode:", anchor="w")
@@ -67,7 +87,7 @@ class App(ctk.CTk):
 
         self.scrollable_filters = ctk.CTkScrollableFrame(self.sidebar, label_text="")
         self.scrollable_filters.pack(pady=5, padx=10, fill="both", expand=True)
-        self.column_vars = {} # Stores BooleanVars for each column
+        self.column_vars = {}
 
         self.stats_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         self.stats_frame.pack(pady=20, padx=20, side="bottom", fill="x")
@@ -82,61 +102,34 @@ class App(ctk.CTk):
         self.files_label = ctk.CTkLabel(self.stats_frame, text="Files: 0", font=ctk.CTkFont(size=12))
         self.files_label.pack(pady=5)
 
-        # Main Area
+        # --- Main Area (Table) ---
         self.main_frame = ctk.CTkFrame(self)
-        self.main_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self.main_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=20)
         self.main_frame.grid_columnconfigure(0, weight=1)
-        self.main_frame.grid_rowconfigure(2, weight=1) # Treeview
-        self.main_frame.grid_rowconfigure(1, weight=0) # Detail Panel
+        self.main_frame.grid_rowconfigure(1, weight=1)
 
         # Search Bar
         self.search_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         self.search_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
 
-        self.search_entry = ctk.CTkEntry(self.search_frame, placeholder_text="Search (Auto-search while typing)...")
-        self.search_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        self.search_entry = ctk.CTkEntry(self.search_frame, placeholder_text="Search rules...")
+        self.search_entry.pack(side="left", fill="x", expand=True, padx=(10, 10))
         self.search_entry.bind("<KeyRelease>", self.on_search_key)
 
         self.clear_btn = ctk.CTkButton(self.search_frame, text="Clear", width=80, fg_color="transparent", border_width=1, command=self.clear_search)
-        self.clear_btn.pack(side="right", padx=(10, 0))
+        self.clear_btn.pack(side="right", padx=(10, 10))
 
         self.search_btn = ctk.CTkButton(self.search_frame, text="Search", width=100, command=self.refresh_table)
         self.search_btn.pack(side="right")
 
-        # Detail View Panel (Moved to top & resizable)
-        self.detail_frame = ctk.CTkFrame(self.main_frame)
-        self.detail_frame.grid(row=1, column=0, sticky="ew", pady=(0, 10))
-
-        self.detail_header = ctk.CTkFrame(self.detail_frame, fg_color="transparent")
-        self.detail_header.pack(fill="x", padx=10, pady=5)
-
-        self.detail_label = ctk.CTkLabel(self.detail_header, text="Rule Details & Quick Editor", font=ctk.CTkFont(size=14, weight="bold"))
-        self.detail_label.pack(side="left")
-
-        self.save_detail_btn = ctk.CTkButton(self.detail_header, text="Save Edits", width=100, command=self.save_detail_edits)
-        self.save_detail_btn.pack(side="right", padx=5)
-
-        self.height_label = ctk.CTkLabel(self.detail_header, text="Height:", font=ctk.CTkFont(size=11))
-        self.height_label.pack(side="right", padx=(10, 5))
-
-        self.height_slider = ctk.CTkSlider(self.detail_header, from_=4, to=30, number_of_steps=26, width=100, command=self.change_detail_height)
-        self.height_slider.pack(side="right")
-        self.height_slider.set(8)
-
-        self.detail_text = tk.Text(self.detail_frame, height=8, bg="#2b2b2b", fg="white", font=("Segoe UI", 10), borderwidth=0, undo=True)
-        self.detail_text.pack(fill="x", padx=10, pady=(0, 10))
-        self.detail_text.configure(state="disabled")
-
-        # Table (Using standard Treeview with custom styling)
+        # Table Container
         self.tree_container = ctk.CTkFrame(self.main_frame)
-        self.tree_container.grid(row=2, column=0, sticky="nsew")
+        self.tree_container.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
 
         style = ttk.Style()
         style.theme_use("default")
-
-        # Configure fonts and sizes
-        table_font = ("Segoe UI", 12)
-        header_font = ("Segoe UI", 13, "bold")
+        table_font = ("Segoe UI", 11)
+        header_font = ("Segoe UI", 12, "bold")
 
         style.configure("Treeview",
                         background="#2b2b2b",
@@ -145,9 +138,7 @@ class App(ctk.CTk):
                         borderwidth=0,
                         font=table_font,
                         rowheight=35)
-
-        style.map("Treeview", background=[('selected', '#3a7ebf')])
-
+        style.map("Treeview", background=[('selected', '#1a75d1')])
         style.configure("Treeview.Heading",
                         background="#333333",
                         foreground="white",
@@ -162,13 +153,38 @@ class App(ctk.CTk):
         self.tree.configure(yscrollcommand=self.scrollbar.set)
 
         self.h_scrollbar = ctk.CTkScrollbar(self.main_frame, orientation="horizontal", command=self.tree.xview)
-        self.h_scrollbar.grid(row=3, column=0, sticky="ew")
+        self.h_scrollbar.grid(row=2, column=0, sticky="ew", padx=10)
         self.tree.configure(xscrollcommand=self.h_scrollbar.set)
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
+
+        # --- Detail Panel (Right) ---
+        self.detail_frame = ctk.CTkFrame(self, width=400)
+        self.detail_frame.grid(row=0, column=2, sticky="nsew", padx=10, pady=20)
+        self.detail_frame.grid_columnconfigure(0, weight=1)
+        self.detail_frame.grid_rowconfigure(1, weight=1)
+
+        self.detail_header = ctk.CTkFrame(self.detail_frame, fg_color="transparent")
+        self.detail_header.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+
+        self.detail_label = ctk.CTkLabel(self.detail_header, text="Rule Attributes", font=ctk.CTkFont(size=16, weight="bold"))
+        self.detail_label.pack(side="left")
+
+        self.save_detail_btn = ctk.CTkButton(self.detail_header, text="Save Edits", width=100, command=self.save_detail_edits)
+        self.save_detail_btn.pack(side="right", padx=5)
+
+        self.detail_scroll = ctk.CTkScrollableFrame(self.detail_frame, label_text="Quick Editor")
+        self.detail_scroll.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
+        self.detail_scroll.grid_columnconfigure(1, weight=1)
+
+        self.detail_entries = {}
+        self.current_selected_rule = None
 
         self.search_timer = None
         self.current_folder = ""
         self.showing_duplicates = False
+        self.sort_column_id = None
+        self.sort_reverse = False
+
         self.refresh_table()
 
     def change_appearance_mode_event(self, new_appearance_mode: str):
@@ -184,36 +200,47 @@ class App(ctk.CTk):
         self.showing_duplicates = False
         self.refresh_table()
 
-    def change_detail_height(self, value):
-        self.detail_text.configure(height=int(value))
+    def sort_column(self, col):
+        if self.sort_column_id == col:
+            self.sort_reverse = not self.sort_reverse
+        else:
+            self.sort_column_id = col
+            self.sort_reverse = False
+
+        l = [(self.tree.set(k, col), k) for k in self.tree.get_children('')]
+
+        # Try to sort numerically if possible
+        try:
+            l.sort(key=lambda t: float(t[0]), reverse=self.sort_reverse)
+        except ValueError:
+            l.sort(reverse=self.sort_reverse)
+
+        for index, (val, k) in enumerate(l):
+            self.tree.move(k, '', index)
+
+        # Update header to show sort direction (simple version)
+        for c in self.tree["columns"]:
+            self.tree.heading(c, text=c.replace("_", " ").title())
+
+        suffix = " ↑" if self.sort_reverse else " ↓"
+        self.tree.heading(col, text=col.replace("_", " ").title() + suffix)
 
     def save_detail_edits(self):
-        selected_item = self.tree.selection()
-        if not selected_item:
+        if not self.current_selected_rule:
             messagebox.showwarning("Warning", "Please select a rule first.")
             return
 
-        values = self.tree.item(selected_item[0])["values"]
-        columns = self.tree["columns"]
-        rule_data = dict(zip(columns, values))
-
-        content = self.detail_text.get("1.0", tk.END).strip()
-        updated_data = {}
-
-        for line in content.split("\n"):
-            if ":" in line:
-                key_raw, val = line.split(":", 1)
-                key = key_raw.strip().lower().replace(" ", "_")
-                updated_data[key] = val.strip()
+        rule_data = self.current_selected_rule
+        updated_data = {k: v.get() for k, v in self.detail_entries.items() if v.get()}
 
         if not updated_data.get("rule_id"):
-             messagebox.showerror("Error", "Rule ID cannot be empty in edits.")
+             messagebox.showerror("Error", "Rule ID cannot be empty.")
              return
 
         filepath = os.path.join(self.current_folder, rule_data["relative_path"])
         try:
             update_rule_xml(rule_data["rule_id"], updated_data, filepath)
-            messagebox.showinfo("Success", "Rule updated from details panel.")
+            messagebox.showinfo("Success", "Rule updated successfully.")
             self.scan_rules()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to update: {e}")
@@ -225,17 +252,29 @@ class App(ctk.CTk):
 
         values = self.tree.item(selected_item[0])["values"]
         columns = self.tree["columns"]
+        self.current_selected_rule = dict(zip(columns, values))
 
-        self.detail_text.configure(state="normal")
-        self.detail_text.delete("1.0", tk.END)
+        # Clear detail entries
+        for widget in self.detail_scroll.winfo_children():
+            widget.destroy()
+        self.detail_entries = {}
 
-        for col, val in zip(columns, values):
-            if val is not None and val != "":
-                self.detail_text.insert(tk.END, f"{col.replace('_', ' ').title()}: ", "bold")
-                self.detail_text.insert(tk.END, f"{val}\n")
+        # Fill detail panel with structured entries
+        # Prioritize important fields
+        important = ["rule_id", "level", "description", "group", "match"]
+        fields = important + [c for c in columns if c not in important and c not in ["id", "is_rule", "filename", "relative_path"]]
 
-        self.detail_text.tag_configure("bold", font=("Segoe UI", 10, "bold"))
-        self.detail_text.configure(state="normal")
+        for i, col in enumerate(fields):
+            val = self.current_selected_rule.get(col, "")
+            if val is None: val = ""
+
+            label = ctk.CTkLabel(self.detail_scroll, text=col.replace("_", " ").title())
+            label.grid(row=i, column=0, padx=5, pady=2, sticky="w")
+
+            entry = ctk.CTkEntry(self.detail_scroll)
+            entry.grid(row=i, column=1, padx=5, pady=2, sticky="ew")
+            entry.insert(0, str(val))
+            self.detail_entries[col] = entry
 
     def update_filter_list(self, columns):
         for widget in self.scrollable_filters.winfo_children():
@@ -255,6 +294,7 @@ class App(ctk.CTk):
         if folder:
             self.current_folder = folder
             messagebox.showinfo("Folder Selected", f"Selected: {folder}")
+            self.scan_rules()
 
     def add_rule(self):
         if not self.current_folder:
@@ -276,7 +316,7 @@ class App(ctk.CTk):
             try:
                 create_rule_xml(dialog.result, filepath)
                 messagebox.showinfo("Success", f"Rule saved to {filename}")
-                self.scan_rules() # Refresh list
+                self.scan_rules()
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to save rule: {e}")
 
@@ -291,7 +331,7 @@ class App(ctk.CTk):
         rule_data = dict(zip(columns, values))
 
         if not rule_data.get("relative_path"):
-            messagebox.showerror("Error", "Could not determine file path for rule.")
+            messagebox.showerror("Error", "Could not determine file path.")
             return
 
         all_cols = self.db.get_columns()
@@ -303,7 +343,7 @@ class App(ctk.CTk):
             try:
                 update_rule_xml(rule_data["rule_id"], dialog.result, filepath)
                 messagebox.showinfo("Success", "Rule updated successfully.")
-                self.scan_rules() # Refresh list
+                self.scan_rules()
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to update rule: {e}")
 
@@ -317,10 +357,13 @@ class App(ctk.CTk):
         columns = self.tree["columns"]
         rule_data = dict(zip(columns, values))
 
-        # Prepare clone data
         clone_data = rule_data.copy()
         clone_data["rule_id"] = f"{rule_data['rule_id']}_clone"
         clone_data["cloned_from"] = rule_data.get("relative_path")
+
+        # Remove internal database fields
+        for key in ["id", "is_rule", "filename", "relative_path"]:
+            if key in clone_data: del clone_data[key]
 
         all_cols = self.db.get_columns()
         dialog = RuleDialog(self, title="Clone Rule", initial_data=clone_data, columns=all_cols)
@@ -337,7 +380,9 @@ class App(ctk.CTk):
             try:
                 create_rule_xml(dialog.result, filepath)
                 messagebox.showinfo("Success", f"Rule cloned to {filename}")
-                self.scan_rules() # Refresh list
+                # Explicitly wait a moment for OS to register file?
+                # Should not be needed but just in case
+                self.scan_rules()
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to clone rule: {e}")
 
@@ -359,7 +404,7 @@ class App(ctk.CTk):
             if delete_rule_from_xml(rule_data["rule_id"], filepath):
                 self.db.delete_rule(rule_data["rule_id"], rule_data["relative_path"])
                 messagebox.showinfo("Success", f"Rule {rule_data['rule_id']} deleted.")
-                self.scan_rules() # Refresh list
+                self.scan_rules()
             else:
                 messagebox.showerror("Error", f"Could not find rule {rule_data['rule_id']} in file.")
         except Exception as e:
@@ -394,7 +439,6 @@ class App(ctk.CTk):
 
     def scan_rules(self):
         if not self.current_folder:
-            messagebox.showwarning("Warning", "Please select a folder first.")
             return
 
         files_to_scan = []
@@ -410,24 +454,20 @@ class App(ctk.CTk):
                     if file_hash != existing_hash:
                         files_to_scan.append((full_path, rel_path, file_hash))
 
-        if not files_to_scan:
-            messagebox.showinfo("Scan Complete", "No changes detected. Database is up to date.")
-            return
-
         total_files = len(files_to_scan)
-        self.progress_bar.set(0)
-        for i, (full_path, rel_path, f_hash) in enumerate(files_to_scan):
-            self.files_label.configure(text=f"Scanning: {i+1}/{total_files}")
-            self.progress_bar.set((i + 1) / total_files)
-            self.update_idletasks()
+        if total_files > 0:
+            self.progress_bar.set(0)
+            for i, (full_path, rel_path, f_hash) in enumerate(files_to_scan):
+                self.files_label.configure(text=f"Scanning: {i+1}/{total_files}")
+                self.progress_bar.set((i + 1) / total_files)
+                self.update_idletasks()
 
-            rules = parse_wazuh_xml(full_path, self.current_folder)
-            self.db.save_rules(rules)
-            self.db.update_file_state(rel_path, f_hash)
+                rules = parse_wazuh_xml(full_path, self.current_folder)
+                self.db.save_rules(rules)
+                self.db.update_file_state(rel_path, f_hash)
+            self.progress_bar.set(1)
 
         self.refresh_table()
-        self.progress_bar.set(1)
-        messagebox.showinfo("Scan Complete", f"Processed {len(files_to_scan)} files.")
 
     def refresh_table(self):
         selected_cols = [col for col, var in self.column_vars.items() if var.get()]
@@ -440,9 +480,10 @@ class App(ctk.CTk):
         self.tree.delete(*self.tree.get_children())
         self.tree["columns"] = columns
         for col in columns:
-            self.tree.heading(col, text=col.replace("_", " ").title())
-            self.tree.column(col, width=200, minwidth=100, stretch=False)
+            self.tree.heading(col, text=col.replace("_", " ").title(), command=lambda _c=col: self.sort_column(_c))
+            self.tree.column(col, width=150, minwidth=100, stretch=False)
 
+        # Optimization: Insert in batches
         def insert_batch(start_idx):
             if not self.tree.winfo_exists(): return
             end_idx = min(start_idx + 150, len(data))
@@ -484,17 +525,13 @@ class RuleDialog(ctk.CTkToplevel):
         self.scrollable_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
         self.scrollable_frame.grid_columnconfigure(1, weight=1)
 
-        # Exclude internal/read-only columns
         excluded = ["id", "is_rule", "filename", "relative_path"]
-
-        # Determine fields to show
         self.fields = ["rule_id", "level", "description", "match", "group", "cloned_from"]
         if columns:
             for col in columns:
                 if col not in excluded and col not in self.fields:
                     self.fields.append(col)
 
-        # Ensure all initial data keys are also included if they aren't in columns
         for key in self.initial_data.keys():
             if key not in excluded and key not in self.fields:
                 self.fields.append(key)
@@ -503,11 +540,10 @@ class RuleDialog(ctk.CTkToplevel):
         for i, field in enumerate(self.fields):
             self.add_field_row(field, i)
 
-        # Custom Field Section
         self.custom_field_frame = ctk.CTkFrame(self.main_container)
         self.custom_field_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10))
 
-        self.new_field_entry = ctk.CTkEntry(self.custom_field_frame, placeholder_text="New field name (e.g. mitre_id)")
+        self.new_field_entry = ctk.CTkEntry(self.custom_field_frame, placeholder_text="New field name")
         self.new_field_entry.pack(side="left", fill="x", expand=True, padx=5, pady=5)
 
         self.add_field_btn = ctk.CTkButton(self.custom_field_frame, text="Add Field", width=80, command=self.add_custom_field)
@@ -524,7 +560,6 @@ class RuleDialog(ctk.CTkToplevel):
         entry = ctk.CTkEntry(self.scrollable_frame)
         entry.grid(row=row_idx, column=1, padx=10, pady=5, sticky="ew")
 
-        # Pre-fill value
         if value is not None:
             entry.insert(0, str(value))
         elif field in self.initial_data:
@@ -536,16 +571,12 @@ class RuleDialog(ctk.CTkToplevel):
 
     def add_custom_field(self):
         new_field = self.new_field_entry.get().strip().lower().replace(" ", "_")
-        if not new_field:
-            return
+        if not new_field: return
         if new_field in self.entries:
             messagebox.showwarning("Warning", f"Field '{new_field}' already exists.")
             return
-
-        row_idx = len(self.entries)
-        self.add_field_row(new_field, row_idx)
+        self.add_field_row(new_field, len(self.entries))
         self.new_field_entry.delete(0, tk.END)
-        self.fields.append(new_field)
 
     def save(self):
         self.result = {k: v.get() for k, v in self.entries.items() if v.get()}

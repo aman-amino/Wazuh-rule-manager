@@ -20,9 +20,9 @@ class App(ctk.CTk):
         ctk.set_default_color_theme("blue")
 
         # Layout: Sidebar (0), Main (1), Detail (2)
-        self.grid_columnconfigure(0, weight=0) # Sidebar
+        self.grid_columnconfigure(0, weight=0, minsize=280) # Sidebar
         self.grid_columnconfigure(1, weight=3) # Main Table
-        self.grid_columnconfigure(2, weight=1) # Detail Panel
+        self.grid_columnconfigure(2, weight=1, minsize=380) # Detail Panel
         self.grid_rowconfigure(0, weight=1)
 
         # --- Sidebar ---
@@ -127,12 +127,11 @@ class App(ctk.CTk):
         self.summary_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         self.summary_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10))
 
-        self.summary_label = ctk.CTkLabel(self.summary_frame, text="Select a rule to see details", font=ctk.CTkFont(size=14, weight="bold"))
+        self.summary_label = ctk.CTkLabel(self.summary_frame, text="Select a rule to see details", font=ctk.CTkFont(size=16, weight="bold"))
         self.summary_label.pack(side="top", anchor="w", pady=(5, 5))
 
-        self.summary_text = ctk.CTkTextbox(self.summary_frame, height=150, font=ctk.CTkFont(family="Consolas", size=12), border_width=1, border_color="#333333")
-        self.summary_text.pack(fill="x", expand=True)
-        self.summary_text.configure(state="disabled")
+        self.summary_scroll = ctk.CTkScrollableFrame(self.summary_frame, height=220, label_text="Rule Details Summary")
+        self.summary_scroll.pack(fill="both", expand=True)
 
         # Table Container
         self.tree_container = ctk.CTkFrame(self.main_frame)
@@ -274,49 +273,45 @@ class App(ctk.CTk):
         self.detail_entries = {}
 
         # Fill detail panel with structured entries
-        # Get all columns dynamically from the SQLite rules table
-        all_columns = self.db.get_columns()
-        
-        # Keep these first if they exist
-        priority_fields = ["rule_id", "level", "description", "group", "match"]
-        
-        # Internal/system fields to hide from detail panel
-        hidden_fields = ["id", "is_rule", "filename", "relative_path"]
-        
-        # Final ordered field list
-        important = [col for col in priority_fields if col in all_columns]
-        other_fields = [col for col in all_columns if col not in priority_fields and col not in hidden_fields]
-        fields = important + other_fields
-        
-        # Update summary text box
-        self.summary_label.configure(
-        text=f"Rule: {self.current_selected_rule.get('rule_id', 'Unknown')}"
-        )
-        self.summary_text.configure(state="normal")
-        self.summary_text.delete("1.0", tk.END)
-        
-        summary_lines = []
-        for col in important:
-            val = self.current_selected_rule.get(col)
-            if val:
-                summary_lines.append(f"{col.replace('_', ' ').title()}: {val}")
-        
-        self.summary_text.insert("1.0", "\n".join(summary_lines))
-        self.summary_text.configure(state="disabled")
-        
-        # Build detail editor fields
+        # Prioritize important fields
+        important = ["rule_id", "level", "description", "group", "match"]
+
+        # Update summary section
+        self.summary_label.configure(text=f"Rule: {self.current_selected_rule.get('rule_id', 'Unknown')}")
+        for widget in self.summary_scroll.winfo_children():
+            widget.destroy()
+
+        # Grid container inside the scrollable frame
+        summary_grid = ctk.CTkFrame(self.summary_scroll, fg_color="transparent")
+        summary_grid.pack(fill="both", expand=True, padx=5, pady=5)
+        for i in range(3):
+            summary_grid.grid_columnconfigure(i, weight=1)
+
+        all_display_cols = important + [c for c in columns if c not in important and c not in ["id", "is_rule", "filename", "relative_path"]]
+
+        for idx, col in enumerate(all_display_cols):
+            r, c = divmod(idx, 3)
+
+            f_frame = ctk.CTkFrame(summary_grid, fg_color="transparent")
+            f_frame.grid(row=r, column=c, sticky="nsew", padx=10, pady=5)
+
+            lbl = ctk.CTkLabel(f_frame, text=col.replace('_', ' ').title(), font=ctk.CTkFont(size=10, weight="bold"), text_color="gray")
+            lbl.pack(anchor="w")
+
+            val = self.current_selected_rule.get(col, "")
+            if val is None: val = ""
+
+            val_lbl = ctk.CTkLabel(f_frame, text=str(val), font=ctk.CTkFont(size=12), anchor="w", justify="left", wraplength=250)
+            val_lbl.pack(anchor="w", padx=(5, 0))
+        fields = all_display_cols
+
         for i, col in enumerate(fields):
             val = self.current_selected_rule.get(col, "")
-            if val is None:
-                val = ""
-            
-            label = ctk.CTkLabel(
-                self.detail_scroll,
-                text=col.replace("_", " ").title(),
-                font=ctk.CTkFont(size=11)
-            )
+            if val is None: val = ""
+
+            label = ctk.CTkLabel(self.detail_scroll, text=col.replace("_", " ").title(), font=ctk.CTkFont(size=11))
             label.grid(row=i, column=0, padx=5, pady=2, sticky="w")
-            
+
             entry = ctk.CTkEntry(self.detail_scroll, height=25)
             entry.grid(row=i, column=1, padx=5, pady=2, sticky="ew")
             entry.insert(0, str(val))

@@ -29,7 +29,7 @@ class App(ctk.CTk):
         self.sidebar = ctk.CTkFrame(self, width=280, corner_radius=0)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
 
-        self.logo_label = ctk.CTkLabel(self.sidebar, text="Wazuh Rule Manager", font=ctk.CTkFont(size=20, weight="bold"))
+        self.logo_label = ctk.CTkLabel(self.sidebar, text="🛡️ Wazuh Manager", font=ctk.CTkFont(size=20, weight="bold"))
         self.logo_label.pack(pady=(20, 10), padx=20)
 
         # Action Groups
@@ -106,7 +106,7 @@ class App(ctk.CTk):
         self.main_frame = ctk.CTkFrame(self)
         self.main_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=20)
         self.main_frame.grid_columnconfigure(0, weight=1)
-        self.main_frame.grid_rowconfigure(1, weight=1)
+        self.main_frame.grid_rowconfigure(2, weight=1)
 
         # Search Bar
         self.search_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
@@ -122,14 +122,26 @@ class App(ctk.CTk):
         self.search_btn = ctk.CTkButton(self.search_frame, text="Search", width=80, command=self.refresh_table)
         self.search_btn.pack(side="left", padx=(5, 10))
 
+
+        # Rule Summary Section (Top of Table)
+        self.summary_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.summary_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10))
+
+        self.summary_label = ctk.CTkLabel(self.summary_frame, text="Select a rule to see details", font=ctk.CTkFont(size=14, weight="bold"))
+        self.summary_label.pack(side="top", anchor="w", pady=(5, 5))
+
+        self.summary_text = ctk.CTkTextbox(self.summary_frame, height=150, font=ctk.CTkFont(family="Consolas", size=12), border_width=1, border_color="#333333")
+        self.summary_text.pack(fill="x", expand=True)
+        self.summary_text.configure(state="disabled")
+
         # Table Container
         self.tree_container = ctk.CTkFrame(self.main_frame)
-        self.tree_container.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
+        self.tree_container.grid(row=2, column=0, sticky="nsew", padx=10, pady=5)
 
         style = ttk.Style()
         style.theme_use("default")
-        table_font = ("Segoe UI", 11)
-        header_font = ("Segoe UI", 12, "bold")
+        table_font = ("Inter", 10)
+        header_font = ("Inter", 11, "bold")
 
         style.configure("Treeview",
                         background="#2b2b2b",
@@ -153,7 +165,7 @@ class App(ctk.CTk):
         self.tree.configure(yscrollcommand=self.scrollbar.set)
 
         self.h_scrollbar = ctk.CTkScrollbar(self.main_frame, orientation="horizontal", command=self.tree.xview)
-        self.h_scrollbar.grid(row=2, column=0, sticky="ew", padx=10)
+        self.h_scrollbar.grid(row=3, column=0, sticky="ew", padx=10)
         self.tree.configure(xscrollcommand=self.h_scrollbar.set)
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
 
@@ -254,6 +266,8 @@ class App(ctk.CTk):
         columns = self.tree["columns"]
         self.current_selected_rule = dict(zip(columns, values))
 
+
+
         # Clear detail entries
         for widget in self.detail_scroll.winfo_children():
             widget.destroy()
@@ -262,6 +276,20 @@ class App(ctk.CTk):
         # Fill detail panel with structured entries
         # Prioritize important fields
         important = ["rule_id", "level", "description", "group", "match"]
+
+        # Update summary text box
+        self.summary_label.configure(text=f"Rule: {self.current_selected_rule.get('rule_id', 'Unknown')}")
+        self.summary_text.configure(state="normal")
+        self.summary_text.delete("1.0", tk.END)
+
+        summary_lines = []
+        for col in important:
+            val = self.current_selected_rule.get(col)
+            if val:
+                summary_lines.append(f"{col.replace('_', ' ').title()}: {val}")
+
+        self.summary_text.insert("1.0", "\n".join(summary_lines))
+        self.summary_text.configure(state="disabled")
         fields = important + [c for c in columns if c not in important and c not in ["id", "is_rule", "filename", "relative_path"]]
 
         for i, col in enumerate(fields):

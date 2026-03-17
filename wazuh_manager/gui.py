@@ -53,8 +53,25 @@ class App(ctk.CTk):
         self.show_duplicates_btn = ctk.CTkButton(self.sidebar, text="Show Duplicates", command=self.show_duplicates)
         self.show_duplicates_btn.pack(pady=8, padx=20)
 
+        self.clone_rule_btn = ctk.CTkButton(self.sidebar, text="Clone Selected Rule", command=self.clone_rule)
+        self.clone_rule_btn.pack(pady=10, padx=20)
+
+        self.delete_rule_btn = ctk.CTkButton(self.sidebar, text="Delete Selected Rule", command=self.delete_rule, fg_color="#d9534f", hover_color="#c9302c")
+        self.delete_rule_btn.pack(pady=10, padx=20)
+
+        self.show_duplicates_btn = ctk.CTkButton(self.sidebar, text="Show Duplicates", command=self.show_duplicates)
+        self.show_duplicates_btn.pack(pady=10, padx=20)
+
         self.export_csv_btn = ctk.CTkButton(self.sidebar, text="Export Results to CSV", command=self.export_to_csv)
         self.export_csv_btn.pack(pady=8, padx=20)
+
+        # Appearance Mode
+        self.appearance_label = ctk.CTkLabel(self.sidebar, text="Appearance Mode:", anchor="w")
+        self.appearance_label.pack(pady=(20, 0), padx=20)
+        self.appearance_optionemenu = ctk.CTkOptionMenu(self.sidebar, values=["Light", "Dark", "System"],
+                                                        command=self.change_appearance_mode_event)
+        self.appearance_optionemenu.pack(pady=10, padx=20)
+        self.appearance_optionemenu.set("Dark")
 
         # Appearance Mode
         self.appearance_label = ctk.CTkLabel(self.sidebar, text="Appearance Mode:", anchor="w")

@@ -20,116 +20,127 @@ class App(ctk.CTk):
         ctk.set_default_color_theme("blue")
 
         # Layout: Sidebar (0), Main (1), Detail (2)
-        self.grid_columnconfigure(0, weight=0) # Sidebar
+        self.grid_columnconfigure(0, weight=0, minsize=280) # Sidebar
         self.grid_columnconfigure(1, weight=3) # Main Table
-        self.grid_columnconfigure(2, weight=1) # Detail Panel
+        self.grid_columnconfigure(2, weight=1, minsize=380) # Detail Panel
         self.grid_rowconfigure(0, weight=1)
 
         # --- Sidebar ---
-        self.sidebar = ctk.CTkFrame(self, width=250, corner_radius=0)
+        self.sidebar = ctk.CTkFrame(self, width=280, corner_radius=0)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
 
-        self.logo_label = ctk.CTkLabel(self.sidebar, text="Rule Manager", font=ctk.CTkFont(size=22, weight="bold"))
-        self.logo_label.pack(pady=20, padx=20)
+        self.logo_label = ctk.CTkLabel(self.sidebar, text="🛡️ Wazuh Manager", font=ctk.CTkFont(size=20, weight="bold"))
+        self.logo_label.pack(pady=(20, 10), padx=20)
 
-        self.select_folder_btn = ctk.CTkButton(self.sidebar, text="Select Folder", command=self.select_folder)
-        self.select_folder_btn.pack(pady=8, padx=20)
+        # Action Groups
+        self.action_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.action_frame.pack(pady=5, padx=10, fill="x")
 
-        self.scan_btn = ctk.CTkButton(self.sidebar, text="Scan Rules", command=self.scan_rules)
-        self.scan_btn.pack(pady=8, padx=20)
+        # Folder & Scan
+        self.folder_btn = ctk.CTkButton(self.action_frame, text="📁 Select Folder", command=self.select_folder, height=32)
+        self.folder_btn.pack(pady=4, padx=10, fill="x")
 
-        self.add_rule_btn = ctk.CTkButton(self.sidebar, text="Add New Rule", command=self.add_rule)
-        self.add_rule_btn.pack(pady=8, padx=20)
+        self.scan_btn = ctk.CTkButton(self.action_frame, text="🔍 Scan Rules", command=self.scan_rules, height=32)
+        self.scan_btn.pack(pady=4, padx=10, fill="x")
 
-        self.edit_rule_btn = ctk.CTkButton(self.sidebar, text="Edit Selected Rule", command=self.edit_rule)
-        self.edit_rule_btn.pack(pady=8, padx=20)
+        # Rule Operations (Add, Edit, Clone, Delete)
+        self.rule_ops_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.rule_ops_frame.pack(pady=5, padx=10, fill="x")
 
-        self.clone_rule_btn = ctk.CTkButton(self.sidebar, text="Clone Selected Rule", command=self.clone_rule)
-        self.clone_rule_btn.pack(pady=8, padx=20)
+        self.add_btn = ctk.CTkButton(self.rule_ops_frame, text="➕ Add", command=self.add_rule, width=110, height=32)
+        self.add_btn.grid(row=0, column=0, pady=4, padx=5)
 
-        self.delete_rule_btn = ctk.CTkButton(self.sidebar, text="Delete Selected Rule", command=self.delete_rule, fg_color="#d9534f", hover_color="#c9302c")
-        self.delete_rule_btn.pack(pady=8, padx=20)
+        self.edit_btn = ctk.CTkButton(self.rule_ops_frame, text="📝 Edit", command=self.edit_rule, width=110, height=32)
+        self.edit_btn.grid(row=0, column=1, pady=4, padx=5)
 
-        self.show_duplicates_btn = ctk.CTkButton(self.sidebar, text="Show Duplicates", command=self.show_duplicates)
-        self.show_duplicates_btn.pack(pady=8, padx=20)
+        self.clone_btn = ctk.CTkButton(self.rule_ops_frame, text="👯 Clone", command=self.clone_rule, width=110, height=32)
+        self.clone_btn.grid(row=1, column=0, pady=4, padx=5)
 
-        self.clone_rule_btn = ctk.CTkButton(self.sidebar, text="Clone Selected Rule", command=self.clone_rule)
-        self.clone_rule_btn.pack(pady=10, padx=20)
+        self.delete_btn = ctk.CTkButton(self.rule_ops_frame, text="🗑️ Delete", command=self.delete_rule, width=110, height=32,
+                                        fg_color="#d9534f", hover_color="#c9302c")
+        self.delete_btn.grid(row=1, column=1, pady=4, padx=5)
 
-        self.delete_rule_btn = ctk.CTkButton(self.sidebar, text="Delete Selected Rule", command=self.delete_rule, fg_color="#d9534f", hover_color="#c9302c")
-        self.delete_rule_btn.pack(pady=10, padx=20)
+        # Data & Tools
+        self.tools_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.tools_frame.pack(pady=5, padx=10, fill="x")
 
-        self.show_duplicates_btn = ctk.CTkButton(self.sidebar, text="Show Duplicates", command=self.show_duplicates)
-        self.show_duplicates_btn.pack(pady=10, padx=20)
+        self.dup_btn = ctk.CTkButton(self.tools_frame, text="👯 Show Duplicates", command=self.show_duplicates, height=32)
+        self.dup_btn.pack(pady=4, padx=10, fill="x")
 
-        self.export_csv_btn = ctk.CTkButton(self.sidebar, text="Export Results to CSV", command=self.export_to_csv)
-        self.export_csv_btn.pack(pady=8, padx=20)
-
-        # Appearance Mode
-        self.appearance_label = ctk.CTkLabel(self.sidebar, text="Appearance Mode:", anchor="w")
-        self.appearance_label.pack(pady=(20, 0), padx=20)
-        self.appearance_optionemenu = ctk.CTkOptionMenu(self.sidebar, values=["Light", "Dark", "System"],
-                                                        command=self.change_appearance_mode_event)
-        self.appearance_optionemenu.pack(pady=10, padx=20)
-        self.appearance_optionemenu.set("Dark")
+        self.export_btn = ctk.CTkButton(self.tools_frame, text="📤 Export CSV", command=self.export_to_csv, height=32)
+        self.export_btn.pack(pady=4, padx=10, fill="x")
 
         # Appearance Mode
-        self.appearance_label = ctk.CTkLabel(self.sidebar, text="Appearance Mode:", anchor="w")
-        self.appearance_label.pack(pady=(20, 0), padx=20)
-        self.appearance_optionemenu = ctk.CTkOptionMenu(self.sidebar, values=["Light", "Dark", "System"],
-                                                        command=self.change_appearance_mode_event)
-        self.appearance_optionemenu.pack(pady=10, padx=20)
-        self.appearance_optionemenu.set("Dark")
+        self.appearance_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.appearance_frame.pack(pady=5, padx=10, fill="x")
+        self.appearance_label = ctk.CTkLabel(self.appearance_frame, text="Appearance:", font=ctk.CTkFont(size=12))
+        self.appearance_label.pack(side="left", padx=10)
+        self.appearance_menu = ctk.CTkOptionMenu(self.appearance_frame, values=["Dark", "Light", "System"],
+                                                 command=self.change_appearance_mode_event, width=120)
+        self.appearance_menu.pack(side="right", padx=10)
+        self.appearance_menu.set("Dark")
 
-        # Search Filters Section
-        self.filter_label = ctk.CTkLabel(self.sidebar, text="Search Columns", font=ctk.CTkFont(size=14, weight="bold"))
-        self.filter_label.pack(pady=(20, 5), padx=20)
+        # Search Filters Section (Filtering of rules)
+        self.filter_label = ctk.CTkLabel(self.sidebar, text="Filter by Columns", font=ctk.CTkFont(size=14, weight="bold"))
+        self.filter_label.pack(pady=(15, 5), padx=20)
 
-        self.scrollable_filters = ctk.CTkScrollableFrame(self.sidebar, label_text="")
+        self.scrollable_filters = ctk.CTkScrollableFrame(self.sidebar, label_text="", height=300)
         self.scrollable_filters.pack(pady=5, padx=10, fill="both", expand=True)
         self.column_vars = {}
 
+        # Stats at the very bottom
         self.stats_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
-        self.stats_frame.pack(pady=20, padx=20, side="bottom", fill="x")
+        self.stats_frame.pack(pady=10, padx=20, side="bottom", fill="x")
 
         self.progress_bar = ctk.CTkProgressBar(self.stats_frame)
-        self.progress_bar.pack(pady=10, padx=10, fill="x")
+        self.progress_bar.pack(pady=5, padx=10, fill="x")
         self.progress_bar.set(0)
 
-        self.stats_label = ctk.CTkLabel(self.stats_frame, text="Rules: 0", font=ctk.CTkFont(size=14))
-        self.stats_label.pack(pady=5)
+        self.stats_label = ctk.CTkLabel(self.stats_frame, text="Rules: 0", font=ctk.CTkFont(size=13))
+        self.stats_label.pack(pady=2)
 
-        self.files_label = ctk.CTkLabel(self.stats_frame, text="Files: 0", font=ctk.CTkFont(size=12))
-        self.files_label.pack(pady=5)
+        self.files_label = ctk.CTkLabel(self.stats_frame, text="Files: 0", font=ctk.CTkFont(size=11))
+        self.files_label.pack(pady=2)
 
         # --- Main Area (Table) ---
         self.main_frame = ctk.CTkFrame(self)
         self.main_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=20)
         self.main_frame.grid_columnconfigure(0, weight=1)
-        self.main_frame.grid_rowconfigure(1, weight=1)
+        self.main_frame.grid_rowconfigure(2, weight=1)
 
         # Search Bar
         self.search_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         self.search_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
 
-        self.search_entry = ctk.CTkEntry(self.search_frame, placeholder_text="Search rules...")
-        self.search_entry.pack(side="left", fill="x", expand=True, padx=(10, 10))
+        self.search_entry = ctk.CTkEntry(self.search_frame, placeholder_text="Search indexed rules...")
+        self.search_entry.pack(side="left", fill="x", expand=True, padx=(10, 5))
         self.search_entry.bind("<KeyRelease>", self.on_search_key)
 
-        self.clear_btn = ctk.CTkButton(self.search_frame, text="Clear", width=80, fg_color="transparent", border_width=1, command=self.clear_search)
-        self.clear_btn.pack(side="right", padx=(10, 10))
+        self.clear_btn = ctk.CTkButton(self.search_frame, text="Clear", width=70, fg_color="transparent", border_width=1, command=self.clear_search)
+        self.clear_btn.pack(side="left", padx=5)
 
-        self.search_btn = ctk.CTkButton(self.search_frame, text="Search", width=100, command=self.refresh_table)
-        self.search_btn.pack(side="right")
+        self.search_btn = ctk.CTkButton(self.search_frame, text="Search", width=80, command=self.refresh_table)
+        self.search_btn.pack(side="left", padx=(5, 10))
+
+
+        # Rule Summary Section (Top of Table)
+        self.summary_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.summary_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10))
+
+        self.summary_label = ctk.CTkLabel(self.summary_frame, text="Select a rule to see details", font=ctk.CTkFont(size=16, weight="bold"))
+        self.summary_label.pack(side="top", anchor="w", pady=(5, 5))
+
+        self.summary_scroll = ctk.CTkScrollableFrame(self.summary_frame, height=220, label_text="Rule Details Summary")
+        self.summary_scroll.pack(fill="both", expand=True)
 
         # Table Container
         self.tree_container = ctk.CTkFrame(self.main_frame)
-        self.tree_container.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
+        self.tree_container.grid(row=2, column=0, sticky="nsew", padx=10, pady=5)
 
         style = ttk.Style()
         style.theme_use("default")
-        table_font = ("Segoe UI", 11)
-        header_font = ("Segoe UI", 12, "bold")
+        table_font = ("Inter", 10)
+        header_font = ("Inter", 11, "bold")
 
         style.configure("Treeview",
                         background="#2b2b2b",
@@ -153,12 +164,12 @@ class App(ctk.CTk):
         self.tree.configure(yscrollcommand=self.scrollbar.set)
 
         self.h_scrollbar = ctk.CTkScrollbar(self.main_frame, orientation="horizontal", command=self.tree.xview)
-        self.h_scrollbar.grid(row=2, column=0, sticky="ew", padx=10)
+        self.h_scrollbar.grid(row=3, column=0, sticky="ew", padx=10)
         self.tree.configure(xscrollcommand=self.h_scrollbar.set)
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
 
         # --- Detail Panel (Right) ---
-        self.detail_frame = ctk.CTkFrame(self, width=400)
+        self.detail_frame = ctk.CTkFrame(self, width=380)
         self.detail_frame.grid(row=0, column=2, sticky="nsew", padx=10, pady=20)
         self.detail_frame.grid_columnconfigure(0, weight=1)
         self.detail_frame.grid_rowconfigure(1, weight=1)
@@ -169,7 +180,7 @@ class App(ctk.CTk):
         self.detail_label = ctk.CTkLabel(self.detail_header, text="Rule Attributes", font=ctk.CTkFont(size=16, weight="bold"))
         self.detail_label.pack(side="left")
 
-        self.save_detail_btn = ctk.CTkButton(self.detail_header, text="Save Edits", width=100, command=self.save_detail_edits)
+        self.save_detail_btn = ctk.CTkButton(self.detail_header, text="💾 Save", width=80, command=self.save_detail_edits)
         self.save_detail_btn.pack(side="right", padx=5)
 
         self.detail_scroll = ctk.CTkScrollableFrame(self.detail_frame, label_text="Quick Editor")
@@ -254,6 +265,8 @@ class App(ctk.CTk):
         columns = self.tree["columns"]
         self.current_selected_rule = dict(zip(columns, values))
 
+
+
         # Clear detail entries
         for widget in self.detail_scroll.winfo_children():
             widget.destroy()
@@ -262,16 +275,44 @@ class App(ctk.CTk):
         # Fill detail panel with structured entries
         # Prioritize important fields
         important = ["rule_id", "level", "description", "group", "match"]
-        fields = important + [c for c in columns if c not in important and c not in ["id", "is_rule", "filename", "relative_path"]]
+
+        # Update summary section
+        self.summary_label.configure(text=f"Rule: {self.current_selected_rule.get('rule_id', 'Unknown')}")
+        for widget in self.summary_scroll.winfo_children():
+            widget.destroy()
+
+        # Grid container inside the scrollable frame
+        summary_grid = ctk.CTkFrame(self.summary_scroll, fg_color="transparent")
+        summary_grid.pack(fill="both", expand=True, padx=5, pady=5)
+        for i in range(3):
+            summary_grid.grid_columnconfigure(i, weight=1)
+
+        all_display_cols = important + [c for c in columns if c not in important and c not in ["id", "is_rule", "filename", "relative_path"]]
+
+        for idx, col in enumerate(all_display_cols):
+            r, c = divmod(idx, 3)
+
+            f_frame = ctk.CTkFrame(summary_grid, fg_color="transparent")
+            f_frame.grid(row=r, column=c, sticky="nsew", padx=10, pady=5)
+
+            lbl = ctk.CTkLabel(f_frame, text=col.replace('_', ' ').title(), font=ctk.CTkFont(size=10, weight="bold"), text_color="gray")
+            lbl.pack(anchor="w")
+
+            val = self.current_selected_rule.get(col, "")
+            if val is None: val = ""
+
+            val_lbl = ctk.CTkLabel(f_frame, text=str(val), font=ctk.CTkFont(size=12), anchor="w", justify="left", wraplength=250)
+            val_lbl.pack(anchor="w", padx=(5, 0))
+        fields = all_display_cols
 
         for i, col in enumerate(fields):
             val = self.current_selected_rule.get(col, "")
             if val is None: val = ""
 
-            label = ctk.CTkLabel(self.detail_scroll, text=col.replace("_", " ").title())
+            label = ctk.CTkLabel(self.detail_scroll, text=col.replace("_", " ").title(), font=ctk.CTkFont(size=11))
             label.grid(row=i, column=0, padx=5, pady=2, sticky="w")
 
-            entry = ctk.CTkEntry(self.detail_scroll)
+            entry = ctk.CTkEntry(self.detail_scroll, height=25)
             entry.grid(row=i, column=1, padx=5, pady=2, sticky="ew")
             entry.insert(0, str(val))
             self.detail_entries[col] = entry

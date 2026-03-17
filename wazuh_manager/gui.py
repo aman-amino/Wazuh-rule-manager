@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import customtkinter as ctk
 from .database import DatabaseManager
-from .parser import get_file_hash, parse_wazuh_xml
+from .parser import get_file_hash, parse_wazuh_xml, create_rule_xml, update_rule_xml, delete_rule_from_xml
 from . import DB_NAME
 
 class App(ctk.CTk):
@@ -41,8 +41,25 @@ class App(ctk.CTk):
         self.edit_rule_btn = ctk.CTkButton(self.sidebar, text="Edit Selected Rule", command=self.edit_rule)
         self.edit_rule_btn.pack(pady=10, padx=20)
 
+        self.clone_rule_btn = ctk.CTkButton(self.sidebar, text="Clone Selected Rule", command=self.clone_rule)
+        self.clone_rule_btn.pack(pady=10, padx=20)
+
+        self.delete_rule_btn = ctk.CTkButton(self.sidebar, text="Delete Selected Rule", command=self.delete_rule, fg_color="#d9534f", hover_color="#c9302c")
+        self.delete_rule_btn.pack(pady=10, padx=20)
+
+        self.show_duplicates_btn = ctk.CTkButton(self.sidebar, text="Show Duplicates", command=self.show_duplicates)
+        self.show_duplicates_btn.pack(pady=10, padx=20)
+
         self.export_csv_btn = ctk.CTkButton(self.sidebar, text="Export Results to CSV", command=self.export_to_csv)
         self.export_csv_btn.pack(pady=10, padx=20)
+
+        # Appearance Mode
+        self.appearance_label = ctk.CTkLabel(self.sidebar, text="Appearance Mode:", anchor="w")
+        self.appearance_label.pack(pady=(20, 0), padx=20)
+        self.appearance_optionemenu = ctk.CTkOptionMenu(self.sidebar, values=["Light", "Dark", "System"],
+                                                        command=self.change_appearance_mode_event)
+        self.appearance_optionemenu.pack(pady=10, padx=20)
+        self.appearance_optionemenu.set("Dark")
 
         # Search Filters Section
         self.filter_label = ctk.CTkLabel(self.sidebar, text="Search Columns", font=ctk.CTkFont(size=14, weight="bold"))
@@ -54,6 +71,10 @@ class App(ctk.CTk):
 
         self.stats_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         self.stats_frame.pack(pady=20, padx=20, side="bottom", fill="x")
+
+        self.progress_bar = ctk.CTkProgressBar(self.stats_frame)
+        self.progress_bar.pack(pady=10, padx=10, fill="x")
+        self.progress_bar.set(0)
 
         self.stats_label = ctk.CTkLabel(self.stats_frame, text="Rules: 0", font=ctk.CTkFont(size=14))
         self.stats_label.pack(pady=5)
@@ -98,7 +119,7 @@ class App(ctk.CTk):
         self.height_label = ctk.CTkLabel(self.detail_header, text="Height:", font=ctk.CTkFont(size=11))
         self.height_label.pack(side="right", padx=(10, 5))
 
-        self.height_slider = ctk.CTkSlider(self.detail_header, from_=4, to_=30, number_of_steps=26, width=100, command=self.change_detail_height)
+        self.height_slider = ctk.CTkSlider(self.detail_header, from_=4, to=30, number_of_steps=26, width=100, command=self.change_detail_height)
         self.height_slider.pack(side="right")
         self.height_slider.set(8)
 
@@ -147,7 +168,11 @@ class App(ctk.CTk):
 
         self.search_timer = None
         self.current_folder = ""
+        self.showing_duplicates = False
         self.refresh_table()
+
+    def change_appearance_mode_event(self, new_appearance_mode: str):
+        ctk.set_appearance_mode(new_appearance_mode)
 
     def on_search_key(self, event):
         if self.search_timer:
@@ -156,6 +181,7 @@ class App(ctk.CTk):
 
     def clear_search(self):
         self.search_entry.delete(0, tk.END)
+        self.showing_duplicates = False
         self.refresh_table()
 
     def change_detail_height(self, value):
@@ -186,7 +212,6 @@ class App(ctk.CTk):
 
         filepath = os.path.join(self.current_folder, rule_data["relative_path"])
         try:
-            from .parser import update_rule_xml
             update_rule_xml(rule_data["rule_id"], updated_data, filepath)
             messagebox.showinfo("Success", "Rule updated from details panel.")
             self.scan_rules()
@@ -249,7 +274,6 @@ class App(ctk.CTk):
                     return
 
             try:
-                from .parser import create_rule_xml
                 create_rule_xml(dialog.result, filepath)
                 messagebox.showinfo("Success", f"Rule saved to {filename}")
                 self.scan_rules() # Refresh list
@@ -277,17 +301,78 @@ class App(ctk.CTk):
         if dialog.result:
             filepath = os.path.join(self.current_folder, rule_data["relative_path"])
             try:
-                from .parser import update_rule_xml
                 update_rule_xml(rule_data["rule_id"], dialog.result, filepath)
                 messagebox.showinfo("Success", "Rule updated successfully.")
                 self.scan_rules() # Refresh list
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to update rule: {e}")
 
+    def clone_rule(self):
+        selected_item = self.tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Warning", "Please select a rule to clone.")
+            return
+
+        values = self.tree.item(selected_item[0])["values"]
+        columns = self.tree["columns"]
+        rule_data = dict(zip(columns, values))
+
+        # Prepare clone data
+        clone_data = rule_data.copy()
+        clone_data["rule_id"] = f"{rule_data['rule_id']}_clone"
+        clone_data["cloned_from"] = rule_data.get("relative_path")
+
+        all_cols = self.db.get_columns()
+        dialog = RuleDialog(self, title="Clone Rule", initial_data=clone_data, columns=all_cols)
+        self.wait_window(dialog)
+
+        if dialog.result:
+            filename = f"cloned_rule_{dialog.result['rule_id']}.xml"
+            filepath = os.path.join(self.current_folder, filename)
+
+            if os.path.exists(filepath):
+                if not messagebox.askyesno("Confirm Overwrite", f"File {filename} already exists. Overwrite?"):
+                    return
+
+            try:
+                create_rule_xml(dialog.result, filepath)
+                messagebox.showinfo("Success", f"Rule cloned to {filename}")
+                self.scan_rules() # Refresh list
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to clone rule: {e}")
+
+    def delete_rule(self):
+        selected_item = self.tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Warning", "Please select a rule to delete.")
+            return
+
+        values = self.tree.item(selected_item[0])["values"]
+        columns = self.tree["columns"]
+        rule_data = dict(zip(columns, values))
+
+        if not messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete rule {rule_data['rule_id']}?"):
+            return
+
+        filepath = os.path.join(self.current_folder, rule_data["relative_path"])
+        try:
+            if delete_rule_from_xml(rule_data["rule_id"], filepath):
+                self.db.delete_rule(rule_data["rule_id"], rule_data["relative_path"])
+                messagebox.showinfo("Success", f"Rule {rule_data['rule_id']} deleted.")
+                self.scan_rules() # Refresh list
+            else:
+                messagebox.showerror("Error", f"Could not find rule {rule_data['rule_id']} in file.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to delete rule: {e}")
+
+    def show_duplicates(self):
+        self.showing_duplicates = True
+        self.refresh_table()
+
     def export_to_csv(self):
         selected_cols = [col for col, var in self.column_vars.items() if var.get()]
         search_term = self.search_entry.get()
-        data, columns = self.db.search_rules(search_term, target_columns=selected_cols)
+        data, columns = self.db.search_rules(search_term, target_columns=selected_cols, show_duplicates=self.showing_duplicates)
 
         if not data:
             messagebox.showinfo("Export", "No results to export.")
@@ -330,8 +415,10 @@ class App(ctk.CTk):
             return
 
         total_files = len(files_to_scan)
+        self.progress_bar.set(0)
         for i, (full_path, rel_path, f_hash) in enumerate(files_to_scan):
             self.files_label.configure(text=f"Scanning: {i+1}/{total_files}")
+            self.progress_bar.set((i + 1) / total_files)
             self.update_idletasks()
 
             rules = parse_wazuh_xml(full_path, self.current_folder)
@@ -339,12 +426,13 @@ class App(ctk.CTk):
             self.db.update_file_state(rel_path, f_hash)
 
         self.refresh_table()
+        self.progress_bar.set(1)
         messagebox.showinfo("Scan Complete", f"Processed {len(files_to_scan)} files.")
 
     def refresh_table(self):
         selected_cols = [col for col, var in self.column_vars.items() if var.get()]
         search_term = self.search_entry.get()
-        data, columns = self.db.search_rules(search_term, target_columns=selected_cols)
+        data, columns = self.db.search_rules(search_term, target_columns=selected_cols, show_duplicates=self.showing_duplicates)
 
         if set(columns) != set(self.column_vars.keys()):
             self.update_filter_list(columns)
@@ -400,7 +488,7 @@ class RuleDialog(ctk.CTkToplevel):
         excluded = ["id", "is_rule", "filename", "relative_path"]
 
         # Determine fields to show
-        self.fields = ["rule_id", "level", "description", "match", "group"]
+        self.fields = ["rule_id", "level", "description", "match", "group", "cloned_from"]
         if columns:
             for col in columns:
                 if col not in excluded and col not in self.fields:

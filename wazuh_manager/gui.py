@@ -178,7 +178,6 @@ class App(ctk.CTk):
             if ":" in line:
                 key_raw, val = line.split(":", 1)
                 key = key_raw.strip().lower().replace(" ", "_")
-                # Map back special cases if needed, but usually it matches
                 updated_data[key] = val.strip()
 
         if not updated_data.get("rule_id"):
@@ -206,13 +205,11 @@ class App(ctk.CTk):
         self.detail_text.delete("1.0", tk.END)
 
         for col, val in zip(columns, values):
-            # Exclude internal non-editable info from main list if desired, or keep all
             if val is not None and val != "":
                 self.detail_text.insert(tk.END, f"{col.replace('_', ' ').title()}: ", "bold")
                 self.detail_text.insert(tk.END, f"{val}\n")
 
         self.detail_text.tag_configure("bold", font=("Segoe UI", 10, "bold"))
-        # Keep state as normal so user can edit
         self.detail_text.configure(state="normal")
 
     def update_filter_list(self, columns):

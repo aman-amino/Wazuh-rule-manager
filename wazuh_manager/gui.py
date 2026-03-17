@@ -293,16 +293,23 @@ class App(ctk.CTk):
             r, c = divmod(idx, 3)
 
             f_frame = ctk.CTkFrame(summary_grid, fg_color="transparent")
-            f_frame.grid(row=r, column=c, sticky="nsew", padx=10, pady=5)
+            f_frame.grid(row=r, column=c, sticky="nsew", padx=15, pady=10)
 
-            lbl = ctk.CTkLabel(f_frame, text=col.replace('_', ' ').title(), font=ctk.CTkFont(size=10, weight="bold"), text_color="gray")
+            # Label with specific color and font
+            lbl = ctk.CTkLabel(f_frame, text=col.replace('_', ' ').title(),
+                              font=ctk.CTkFont(size=12, weight="bold"),
+                              text_color="#888888")
             lbl.pack(anchor="w")
 
             val = self.current_selected_rule.get(col, "")
-            if val is None: val = ""
+            if val is None or val == "": val = "None"
 
-            val_lbl = ctk.CTkLabel(f_frame, text=str(val), font=ctk.CTkFont(size=12), anchor="w", justify="left", wraplength=250)
-            val_lbl.pack(anchor="w", padx=(5, 0))
+            # Value with better font size and wrapping
+            val_lbl = ctk.CTkLabel(f_frame, text=str(val),
+                                  font=ctk.CTkFont(size=13),
+                                  anchor="w", justify="left",
+                                  wraplength=300)
+            val_lbl.pack(anchor="w", padx=(2, 0), pady=(2, 0))
         fields = all_display_cols
 
         for i, col in enumerate(fields):

@@ -274,35 +274,54 @@ class App(ctk.CTk):
         self.detail_entries = {}
 
         # Fill detail panel with structured entries
-        # Prioritize important fields
-        important = ["rule_id", "level", "description", "group", "match"]
-
+        # Get all columns dynamically from the SQLite rules table
+        all_columns = self.db.get_columns()
+        
+        # Keep these first if they exist
+        priority_fields = ["rule_id", "level", "description", "group", "match"]
+        
+        # Internal/system fields to hide from detail panel
+        hidden_fields = ["id", "is_rule", "filename", "relative_path"]
+        
+        # Final ordered field list
+        important = [col for col in priority_fields if col in all_columns]
+        other_fields = [col for col in all_columns if col not in priority_fields and col not in hidden_fields]
+        fields = important + other_fields
+        
         # Update summary text box
-        self.summary_label.configure(text=f"Rule: {self.current_selected_rule.get('rule_id', 'Unknown')}")
+        self.summary_label.configure(
+        text=f"Rule: {self.current_selected_rule.get('rule_id', 'Unknown')}"
+        )
         self.summary_text.configure(state="normal")
         self.summary_text.delete("1.0", tk.END)
-
+        
         summary_lines = []
         for col in important:
-            val = self.current_selected_rule.get(col)
-            if val:
-                summary_lines.append(f"{col.replace('_', ' ').title()}: {val}")
-
+        val = self.current_selected_rule.get(col)
+        if val:
+            summary_lines.append(f"{col.replace('_', ' ').title()}: {val}")
+        
         self.summary_text.insert("1.0", "\n".join(summary_lines))
         self.summary_text.configure(state="disabled")
-        fields = important + [c for c in columns if c not in important and c not in ["id", "is_rule", "filename", "relative_path"]]
-
+        
+        # Build detail editor fields
         for i, col in enumerate(fields):
-            val = self.current_selected_rule.get(col, "")
-            if val is None: val = ""
-
-            label = ctk.CTkLabel(self.detail_scroll, text=col.replace("_", " ").title(), font=ctk.CTkFont(size=11))
-            label.grid(row=i, column=0, padx=5, pady=2, sticky="w")
-
-            entry = ctk.CTkEntry(self.detail_scroll, height=25)
-            entry.grid(row=i, column=1, padx=5, pady=2, sticky="ew")
-            entry.insert(0, str(val))
-            self.detail_entries[col] = entry
+        val = self.current_selected_rule.get(col, "")
+        if val is None:
+            val = ""
+        
+        label = ctk.CTkLabel(
+            self.detail_scroll,
+            text=col.replace("_", " ").title(),
+            font=ctk.CTkFont(size=11)
+        )
+        label.grid(row=i, column=0, padx=5, pady=2, sticky="w")
+        
+        entry = ctk.CTkEntry(self.detail_scroll, height=25)
+        entry.grid(row=i, column=1, padx=5, pady=2, sticky="ew")
+        entry.insert(0, str(val))
+        
+        self.detail_entries[col] = entry
 
     def update_filter_list(self, columns):
         for widget in self.scrollable_filters.winfo_children():

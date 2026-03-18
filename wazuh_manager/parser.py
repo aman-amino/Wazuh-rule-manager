@@ -71,7 +71,7 @@ def parse_wazuh_xml(filepath, base_dir):
 
             for attr, val in elem.attrib.items():
                 if attr != "id":
-                    rule_data[f"rule_{attr}"] = val
+                    rule_data[attr] = val
 
             for child in elem:
                 tag_name = child.tag
@@ -137,7 +137,12 @@ def delete_rule_from_xml(rule_id, filepath):
             parent = parent_map.get(target_rule)
             if parent is not None:
                 parent.remove(target_rule)
-                _write_multi_root_xml(root, filepath)
+
+                # If no rules left in file, delete the file itself
+                if not root.findall(".//rule"):
+                    os.remove(filepath)
+                else:
+                    _write_multi_root_xml(root, filepath)
                 return True
     except Exception as e:
         print(f"Error deleting rule {rule_id} from {filepath}: {e}")

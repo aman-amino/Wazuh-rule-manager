@@ -42,7 +42,7 @@ class TestMultiRootXML(unittest.TestCase):
         update_rule_xml("1001", {"level": "7", "description": "Updated Rule 1"}, self.xml_path)
         rules = parse_wazuh_xml(self.xml_path, self.test_dir.name)
         r1 = next(r for r in rules if r['rule_id'] == "1001")
-        self.assertEqual(r1['rule_level'], "7")
+        self.assertEqual(r1['level'], "7")
         self.assertEqual(r1['description'], "Updated Rule 1")
 
         # Ensure rule 2 is still there
@@ -63,3 +63,23 @@ class TestMultiRootXML(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+    def test_delete_last_rule_removes_file(self):
+        # Create a file with only one rule
+        single_xml_path = os.path.join(self.test_dir.name, "single.xml")
+        xml_content = """<group name="single_group">
+  <rule id="9999" level="3">
+    <description>Last rule</description>
+  </rule>
+</group>
+"""
+        with open(single_xml_path, "w") as f:
+            f.write(xml_content)
+
+        self.assertTrue(os.path.exists(single_xml_path))
+
+        # Delete the rule
+        delete_rule_from_xml("9999", single_xml_path)
+
+        # Verify file is gone
+        self.assertFalse(os.path.exists(single_xml_path))

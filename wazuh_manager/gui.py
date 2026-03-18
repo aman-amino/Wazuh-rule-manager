@@ -566,12 +566,26 @@ class RuleDialog(ctk.CTkToplevel):
         self.grid_rowconfigure(0, weight=1)
 
         self.main_container = ctk.CTkFrame(self)
-        self.main_container.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
-        self.main_container.grid_columnconfigure(0, weight=1)
-        self.main_container.grid_rowconfigure(0, weight=1)
+        self.main_container.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Bottom frame for action buttons to ensure they are always visible
+        self.button_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        self.button_frame.pack(side="bottom", fill="x", pady=(0, 10))
+
+        self.save_btn = ctk.CTkButton(self.button_frame, text="Save Rule", command=self.save)
+        self.save_btn.pack(pady=10)
+
+        self.custom_field_frame = ctk.CTkFrame(self.main_container)
+        self.custom_field_frame.pack(side="bottom", fill="x", padx=10, pady=(0, 10))
+
+        self.new_field_entry = ctk.CTkEntry(self.custom_field_frame, placeholder_text="New field name")
+        self.new_field_entry.pack(side="left", fill="x", expand=True, padx=5, pady=5)
+
+        self.add_field_btn = ctk.CTkButton(self.custom_field_frame, text="Add Field", width=80, command=self.add_custom_field)
+        self.add_field_btn.pack(side="right", padx=5, pady=5)
 
         self.scrollable_frame = ctk.CTkScrollableFrame(self.main_container, label_text="Rule Attributes")
-        self.scrollable_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        self.scrollable_frame.pack(side="top", fill="both", expand=True, padx=10, pady=10)
         self.scrollable_frame.grid_columnconfigure(1, weight=1)
 
         excluded = ["id", "is_rule", "filename", "relative_path"]
@@ -589,18 +603,6 @@ class RuleDialog(ctk.CTkToplevel):
         for i, field in enumerate(self.fields):
             self.add_field_row(field, i)
 
-        self.custom_field_frame = ctk.CTkFrame(self.main_container)
-        self.custom_field_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 10))
-
-        self.new_field_entry = ctk.CTkEntry(self.custom_field_frame, placeholder_text="New field name")
-        self.new_field_entry.pack(side="left", fill="x", expand=True, padx=5, pady=5)
-
-        self.add_field_btn = ctk.CTkButton(self.custom_field_frame, text="Add Field", width=80, command=self.add_custom_field)
-        self.add_field_btn.pack(side="right", padx=5, pady=5)
-
-        self.save_btn = ctk.CTkButton(self.main_container, text="Save Rule", command=self.save)
-        self.save_btn.grid(row=2, column=0, pady=10)
-
     def add_field_row(self, field, row_idx, value=None):
         display_name = field.replace("_", " ").title()
         label = ctk.CTkLabel(self.scrollable_frame, text=display_name)
@@ -613,8 +615,7 @@ class RuleDialog(ctk.CTkToplevel):
             entry.insert(0, str(value))
         elif field in self.initial_data:
             entry.insert(0, str(self.initial_data[field]))
-        elif field == "level" and "rule_level" in self.initial_data:
-            entry.insert(0, str(self.initial_data["rule_level"]))
+
 
         self.entries[field] = entry
 

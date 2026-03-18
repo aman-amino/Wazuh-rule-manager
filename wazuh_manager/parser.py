@@ -2,6 +2,7 @@ import os
 import hashlib
 import xml.etree.ElementTree as ET
 import re
+import csv
 
 def _parse_multi_root_xml(filepath):
     """Parses an XML file that might have multiple root elements by wrapping them."""
@@ -49,10 +50,6 @@ def parse_wazuh_xml(filepath, base_dir):
         return []
 
     rules_found = []
-
-    # Propagate group name if root is <group>
-    root_group = None
-    # Note: root is now <root>, children are <group> or <rule>
 
     def process_element(elem, current_group):
         group_to_use = current_group
@@ -112,9 +109,16 @@ def create_rule_xml(rule_data, filepath):
         rule.set("level", rule_data["level"])
 
     for key, value in rule_data.items():
-        if key not in ["rule_id", "level", "group"] and value:
-            child = ET.SubElement(rule, key)
-            child.text = value
+        if key not in ["rule_id", "level", "group", "id", "is_rule", "filename", "relative_path", "cloned_from"] and value:
+            # Handle potential multi-value fields if they were joined by comma
+            if isinstance(value, str) and ", " in value:
+                parts = value.split(", ")
+                for part in parts:
+                    child = ET.SubElement(rule, key)
+                    child.text = part
+            else:
+                child = ET.SubElement(rule, key)
+                child.text = str(value)
 
     tree = ET.ElementTree(root)
     if hasattr(ET, "indent"):
@@ -164,15 +168,67 @@ def update_rule_xml(rule_id, updated_data, filepath):
         target_rule.set("level", updated_data["level"])
 
     for key, value in updated_data.items():
-        if key not in ["rule_id", "level", "group"]:
+        if key not in ["rule_id", "level", "group", "id", "is_rule", "filename", "relative_path"]:
+            # Simple update/replace logic
             child = target_rule.find(key)
             if child is not None:
                 if value:
-                    child.text = value
+                    child.text = str(value)
                 else:
                     target_rule.remove(child)
             elif value:
                 child = ET.SubElement(target_rule, key)
-                child.text = value
+                child.text = str(value)
+
+    _write_multi_root_xml(root, filepath)
+
+def parse_rules_from_csv(filepath):
+    """Parses rules from a CSV file."""
+    rules = []
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                # Clean up empty values
+                rule = {k: v for k, v in row.items() if v}
+                if 'rule_id' in rule:
+                    rules.append(rule)
+    except Exception as e:
+        print(f"Error parsing CSV {filepath}: {e}")
+    return rules
+
+def save_rules_to_xml(rules_data, filepath):
+    """Saves multiple rules to a single XML file, grouped by 'group' if possible."""
+    # Group rules by their group attribute
+    groups = {}
+    for rule_data in rules_data:
+        g_name = rule_data.get("group", "default")
+        if g_name not in groups:
+            groups[g_name] = []
+        groups[g_name].append(rule_data)
+
+    root = ET.Element("root") # Temporary root for multi-group/multi-rule
+
+    for g_name, rules in groups.items():
+        group_elem = ET.SubElement(root, "group")
+        if g_name != "default":
+            group_elem.set("name", g_name)
+
+        for r_data in rules:
+            rule = ET.SubElement(group_elem, "rule")
+            rule.set("id", str(r_data.get("rule_id")))
+            if r_data.get("level"):
+                rule.set("level", str(r_data["level"]))
+
+            for key, value in r_data.items():
+                if key not in ["rule_id", "level", "group", "id", "is_rule", "filename", "relative_path", "cloned_from"] and value:
+                    if isinstance(value, str) and ", " in value:
+                        parts = value.split(", ")
+                        for part in parts:
+                            child = ET.SubElement(rule, key)
+                            child.text = part
+                    else:
+                        child = ET.SubElement(rule, key)
+                        child.text = str(value)
 
     _write_multi_root_xml(root, filepath)

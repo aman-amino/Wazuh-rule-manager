@@ -1,0 +1,360 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>wazuh_manager package &mdash; Wazuh Rule Manager 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="wazuh_manager" href="modules.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="index.html" class="icon icon-home">
+            Wazuh Rule Manager
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">wazuh_manager</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">wazuh_manager package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-wazuh_manager.cli">wazuh_manager.cli module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#wazuh_manager.cli.run_cli"><code class="docutils literal notranslate"><span class="pre">run_cli()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#wazuh_manager.cli.scan"><code class="docutils literal notranslate"><span class="pre">scan()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#wazuh_manager.cli.search"><code class="docutils literal notranslate"><span class="pre">search()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-wazuh_manager.database">wazuh_manager.database module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#wazuh_manager.database.DatabaseManager"><code class="docutils literal notranslate"><span class="pre">DatabaseManager</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-wazuh_manager.gui">wazuh_manager.gui module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#wazuh_manager.gui.App"><code class="docutils literal notranslate"><span class="pre">App</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#wazuh_manager.gui.RuleDialog"><code class="docutils literal notranslate"><span class="pre">RuleDialog</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-wazuh_manager.parser">wazuh_manager.parser module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#wazuh_manager.parser.create_rule_xml"><code class="docutils literal notranslate"><span class="pre">create_rule_xml()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#wazuh_manager.parser.delete_rule_from_xml"><code class="docutils literal notranslate"><span class="pre">delete_rule_from_xml()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#wazuh_manager.parser.get_file_hash"><code class="docutils literal notranslate"><span class="pre">get_file_hash()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#wazuh_manager.parser.parse_wazuh_xml"><code class="docutils literal notranslate"><span class="pre">parse_wazuh_xml()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#wazuh_manager.parser.update_rule_xml"><code class="docutils literal notranslate"><span class="pre">update_rule_xml()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-wazuh_manager">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Wazuh Rule Manager</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">wazuh_manager</a></li>
+      <li class="breadcrumb-item active">wazuh_manager package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/wazuh_manager.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <section id="wazuh-manager-package">
+<h1>wazuh_manager package<a class="headerlink" href="#wazuh-manager-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-wazuh_manager.cli">
+<span id="wazuh-manager-cli-module"></span><h2>wazuh_manager.cli module<a class="headerlink" href="#module-wazuh_manager.cli" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="wazuh_manager.cli.run_cli">
+<span class="sig-prename descclassname"><span class="pre">wazuh_manager.cli.</span></span><span class="sig-name descname"><span class="pre">run_cli</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/cli.html#run_cli"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.cli.run_cli" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="wazuh_manager.cli.scan">
+<span class="sig-prename descclassname"><span class="pre">wazuh_manager.cli.</span></span><span class="sig-name descname"><span class="pre">scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/cli.html#scan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.cli.scan" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="wazuh_manager.cli.search">
+<span class="sig-prename descclassname"><span class="pre">wazuh_manager.cli.</span></span><span class="sig-name descname"><span class="pre">search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/cli.html#search"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.cli.search" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-wazuh_manager.database">
+<span id="wazuh-manager-database-module"></span><h2>wazuh_manager.database module<a class="headerlink" href="#module-wazuh_manager.database" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="wazuh_manager.database.DatabaseManager">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">wazuh_manager.database.</span></span><span class="sig-name descname"><span class="pre">DatabaseManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/database.html#DatabaseManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.database.DatabaseManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.database.DatabaseManager.delete_rule">
+<span class="sig-name descname"><span class="pre">delete_rule</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rule_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relative_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/database.html#DatabaseManager.delete_rule"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.database.DatabaseManager.delete_rule" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.database.DatabaseManager.ensure_column">
+<span class="sig-name descname"><span class="pre">ensure_column</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/database.html#DatabaseManager.ensure_column"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.database.DatabaseManager.ensure_column" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.database.DatabaseManager.get_columns">
+<span class="sig-name descname"><span class="pre">get_columns</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/database.html#DatabaseManager.get_columns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.database.DatabaseManager.get_columns" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.database.DatabaseManager.get_connection">
+<span class="sig-name descname"><span class="pre">get_connection</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/database.html#DatabaseManager.get_connection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.database.DatabaseManager.get_connection" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.database.DatabaseManager.get_file_hash">
+<span class="sig-name descname"><span class="pre">get_file_hash</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">relative_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/database.html#DatabaseManager.get_file_hash"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.database.DatabaseManager.get_file_hash" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.database.DatabaseManager.init_db">
+<span class="sig-name descname"><span class="pre">init_db</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/database.html#DatabaseManager.init_db"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.database.DatabaseManager.init_db" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.database.DatabaseManager.save_rules">
+<span class="sig-name descname"><span class="pre">save_rules</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rules_data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/database.html#DatabaseManager.save_rules"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.database.DatabaseManager.save_rules" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.database.DatabaseManager.search_rules">
+<span class="sig-name descname"><span class="pre">search_rules</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_duplicates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/database.html#DatabaseManager.search_rules"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.database.DatabaseManager.search_rules" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.database.DatabaseManager.update_file_state">
+<span class="sig-name descname"><span class="pre">update_file_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">relative_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_hash</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/database.html#DatabaseManager.update_file_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.database.DatabaseManager.update_file_state" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-wazuh_manager.gui">
+<span id="wazuh-manager-gui-module"></span><h2>wazuh_manager.gui module<a class="headerlink" href="#module-wazuh_manager.gui" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">wazuh_manager.gui.</span></span><span class="sig-name descname"><span class="pre">App</span></span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">CTk</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.add_rule">
+<span class="sig-name descname"><span class="pre">add_rule</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.add_rule"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.add_rule" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.change_appearance_mode_event">
+<span class="sig-name descname"><span class="pre">change_appearance_mode_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_appearance_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.change_appearance_mode_event"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.change_appearance_mode_event" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.clear_search">
+<span class="sig-name descname"><span class="pre">clear_search</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.clear_search"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.clear_search" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.clone_rule">
+<span class="sig-name descname"><span class="pre">clone_rule</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.clone_rule"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.clone_rule" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.delete_rule">
+<span class="sig-name descname"><span class="pre">delete_rule</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.delete_rule"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.delete_rule" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.edit_rule">
+<span class="sig-name descname"><span class="pre">edit_rule</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.edit_rule"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.edit_rule" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.export_to_csv">
+<span class="sig-name descname"><span class="pre">export_to_csv</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.export_to_csv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.export_to_csv" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.on_search_key">
+<span class="sig-name descname"><span class="pre">on_search_key</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.on_search_key"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.on_search_key" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.on_tree_select">
+<span class="sig-name descname"><span class="pre">on_tree_select</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.on_tree_select"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.on_tree_select" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.refresh_table">
+<span class="sig-name descname"><span class="pre">refresh_table</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.refresh_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.refresh_table" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.save_detail_edits">
+<span class="sig-name descname"><span class="pre">save_detail_edits</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.save_detail_edits"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.save_detail_edits" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.scan_rules">
+<span class="sig-name descname"><span class="pre">scan_rules</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.scan_rules"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.scan_rules" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.select_folder">
+<span class="sig-name descname"><span class="pre">select_folder</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.select_folder"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.select_folder" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.show_duplicates">
+<span class="sig-name descname"><span class="pre">show_duplicates</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.show_duplicates"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.show_duplicates" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.sort_column">
+<span class="sig-name descname"><span class="pre">sort_column</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.sort_column"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.sort_column" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.update_filter_list">
+<span class="sig-name descname"><span class="pre">update_filter_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.update_filter_list"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.update_filter_list" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.App.update_stats">
+<span class="sig-name descname"><span class="pre">update_stats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rule_count</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#App.update_stats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.App.update_stats" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="wazuh_manager.gui.RuleDialog">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">wazuh_manager.gui.</span></span><span class="sig-name descname"><span class="pre">RuleDialog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Rule</span> <span class="pre">Dialog'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#RuleDialog"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.RuleDialog" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">CTkToplevel</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.RuleDialog.add_custom_field">
+<span class="sig-name descname"><span class="pre">add_custom_field</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#RuleDialog.add_custom_field"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.RuleDialog.add_custom_field" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.RuleDialog.add_field_row">
+<span class="sig-name descname"><span class="pre">add_field_row</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_idx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#RuleDialog.add_field_row"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.RuleDialog.add_field_row" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="wazuh_manager.gui.RuleDialog.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/gui.html#RuleDialog.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.gui.RuleDialog.save" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-wazuh_manager.parser">
+<span id="wazuh-manager-parser-module"></span><h2>wazuh_manager.parser module<a class="headerlink" href="#module-wazuh_manager.parser" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="wazuh_manager.parser.create_rule_xml">
+<span class="sig-prename descclassname"><span class="pre">wazuh_manager.parser.</span></span><span class="sig-name descname"><span class="pre">create_rule_xml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rule_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filepath</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/parser.html#create_rule_xml"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.parser.create_rule_xml" title="Link to this definition"></a></dt>
+<dd><p>Creates a new Wazuh XML rule file from the provided data.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="wazuh_manager.parser.delete_rule_from_xml">
+<span class="sig-prename descclassname"><span class="pre">wazuh_manager.parser.</span></span><span class="sig-name descname"><span class="pre">delete_rule_from_xml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rule_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filepath</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/parser.html#delete_rule_from_xml"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.parser.delete_rule_from_xml" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="wazuh_manager.parser.get_file_hash">
+<span class="sig-prename descclassname"><span class="pre">wazuh_manager.parser.</span></span><span class="sig-name descname"><span class="pre">get_file_hash</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/parser.html#get_file_hash"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.parser.get_file_hash" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="wazuh_manager.parser.parse_wazuh_xml">
+<span class="sig-prename descclassname"><span class="pre">wazuh_manager.parser.</span></span><span class="sig-name descname"><span class="pre">parse_wazuh_xml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_dir</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/parser.html#parse_wazuh_xml"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.parser.parse_wazuh_xml" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="wazuh_manager.parser.update_rule_xml">
+<span class="sig-prename descclassname"><span class="pre">wazuh_manager.parser.</span></span><span class="sig-name descname"><span class="pre">update_rule_xml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rule_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">updated_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filepath</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/wazuh_manager/parser.html#update_rule_xml"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#wazuh_manager.parser.update_rule_xml" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-wazuh_manager">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-wazuh_manager" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="modules.html" class="btn btn-neutral float-left" title="wazuh_manager" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jules.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>

@@ -1,7 +1,7 @@
 import unittest
 import os
 import tempfile
-from wazuh_manager.parser import parse_wazuh_xml, get_file_hash
+from wazuh_manager.parser import parse_wazuh_xml, get_file_hash, parse_rules_from_csv, save_rules_to_xml, create_rule_xml
 
 class TestParser(unittest.TestCase):
     def test_parse_wazuh_xml(self):
@@ -43,6 +43,50 @@ class TestParser(unittest.TestCase):
             self.assertNotEqual(h1, h3)
         finally:
             os.remove(tmp_path)
+
+    def test_csv_parsing(self):
+        csv_content = "rule_id,level,description,filename\n100002,7,Test CSV Rule,test.xml"
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as tmp:
+            tmp.write(csv_content)
+            tmp_path = tmp.name
+
+        try:
+            rules = parse_rules_from_csv(tmp_path)
+            self.assertEqual(len(rules), 1)
+            self.assertEqual(rules[0]["rule_id"], "100002")
+            self.assertEqual(rules[0]["level"], "7")
+        finally:
+            os.remove(tmp_path)
+
+    def test_save_rules_to_xml(self):
+        rules = [
+            {"rule_id": "200001", "level": "3", "description": "Multi 1", "group": "g1"},
+            {"rule_id": "200002", "level": "10", "description": "Multi 2", "group": "g1"},
+            {"rule_id": "200003", "level": "5", "description": "Multi 3", "group": "g2"}
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            xml_path = os.path.join(tmpdir, "multi.xml")
+            save_rules_to_xml(rules, xml_path)
+
+            # Now parse it back
+            parsed = parse_wazuh_xml(xml_path, tmpdir)
+            self.assertEqual(len(parsed), 3)
+            ids = [r["rule_id"] for r in parsed]
+            self.assertIn("200001", ids)
+            self.assertIn("200002", ids)
+            self.assertIn("200003", ids)
+
+    def test_multi_value_xml(self):
+        # Test that comma-separated values in data are converted to multi-tag XML
+        rule_data = {"rule_id": "300001", "level": "5", "info": "link1, link2"}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            xml_path = os.path.join(tmpdir, "multi_val.xml")
+            create_rule_xml(rule_data, xml_path)
+
+            with open(xml_path, 'r') as f:
+                content = f.read()
+                self.assertEqual(content.count("<info>link1</info>"), 1)
+                self.assertEqual(content.count("<info>link2</info>"), 1)
 
 if __name__ == "__main__":
     unittest.main()

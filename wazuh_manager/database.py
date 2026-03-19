@@ -27,7 +27,18 @@ class DatabaseManager:
                     rule_id TEXT,
                     is_rule INTEGER DEFAULT 0,
                     filename TEXT,
-                    relative_path TEXT
+                    relative_path TEXT,
+                    raw_xml TEXT
+                )
+            """)
+            # Rule history table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS rule_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    rule_id TEXT,
+                    relative_path TEXT,
+                    raw_xml TEXT,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             conn.commit()
@@ -74,6 +85,25 @@ class DatabaseManager:
 
                 cursor.execute(f"INSERT INTO rules ({col_names}) VALUES ({placeholders})", rule)
             conn.commit()
+
+    def add_to_history(self, rule_id, relative_path, raw_xml):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO rule_history (rule_id, relative_path, raw_xml)
+                VALUES (?, ?, ?)
+            """, (rule_id, relative_path, raw_xml))
+            conn.commit()
+
+    def get_history(self, rule_id, relative_path):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, raw_xml, timestamp FROM rule_history
+                WHERE rule_id = ? AND relative_path = ?
+                ORDER BY timestamp DESC
+            """, (rule_id, relative_path))
+            return cursor.fetchall()
 
     def delete_rule(self, rule_id, relative_path):
         with self.get_connection() as conn:

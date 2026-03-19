@@ -100,6 +100,8 @@ class App(ctk.CTk):
         self.progress_bar.set(0)
         self.stats_label = ctk.CTkLabel(self.stats_frame, text="Rules: 0", font=ctk.CTkFont(size=13))
         self.stats_label.pack()
+        self.files_label = ctk.CTkLabel(self.stats_frame, text="Files: 0", font=ctk.CTkFont(size=13))
+        self.files_label.pack()
 
         # --- Main Area ---
         self.main_frame = ctk.CTkFrame(self)
@@ -147,15 +149,10 @@ class App(ctk.CTk):
 
         self.current_folder = ""
         self.search_timer = None
+        self.showing_duplicates = False
+        self.sort_column_id = None
+        self.sort_reverse = False
         self.refresh_table()
-
-    def create_sidebar_button(self, text, command):
-        btn = ctk.CTkButton(self.sidebar, text=text, command=command, height=35, anchor="w")
-        btn.pack(pady=4, padx=15, fill="x")
-
-    def create_grid_button(self, parent, text, command, r, c, color=None):
-        btn = ctk.CTkButton(parent, text=text, command=command, width=120, height=32, fg_color=color)
-        btn.grid(row=r, column=c, padx=5, pady=4)
 
     def create_analytics_section(self, title):
         frame = ctk.CTkFrame(self.status_scroll)
@@ -191,104 +188,29 @@ class App(ctk.CTk):
         for index, (val, k) in enumerate(l):
             self.tree.move(k, '', index)
 
-        # Update header to show sort direction (simple version)
+        # Update header to show sort direction
         for c in self.tree["columns"]:
             self.tree.heading(c, text=c.replace("_", " ").title())
 
         suffix = " ↑" if self.sort_reverse else " ↓"
         self.tree.heading(col, text=col.replace("_", " ").title() + suffix)
 
-    def save_detail_edits(self):
-        if not self.current_selected_rule:
-            messagebox.showwarning("Warning", "Please select a rule first.")
-            return
-
-        rule_data = self.current_selected_rule
-        updated_data = {k: v.get() for k, v in self.detail_entries.items() if v.get()}
-
-        if not updated_data.get("rule_id"):
-             messagebox.showerror("Error", "Rule ID cannot be empty.")
-             return
-
-        filepath = os.path.join(self.current_folder, rule_data["relative_path"])
-        try:
-            update_rule_xml(rule_data["rule_id"], updated_data, filepath)
-            messagebox.showinfo("Success", "Rule updated successfully.")
-            self.scan_rules()
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to update: {e}")
-
     def on_tree_select(self, event):
-        selected_item = self.tree.selection()
-        if not selected_item:
-            return
+        sel = self.tree.selection()
+        if not sel: return
+        values = self.tree.item(sel[0])["values"]
+        cols = self.tree["columns"]
+        rule = dict(zip(cols, values))
+        for w in self.detail_container.winfo_children(): w.destroy()
+        for f in ["rule_id", "level", "description", "group", "filename"]:
+            if f in rule:
+                row = ctk.CTkFrame(self.detail_container, fg_color="transparent")
+                row.pack(fill="x", pady=2)
+                ctk.CTkLabel(row, text=f"{f.replace('_',' ').title()}:", font=ctk.CTkFont(size=11, weight="bold"), text_color="#888888").pack(anchor="w")
+                ctk.CTkLabel(row, text=str(rule[f]), wraplength=340, justify="left", font=ctk.CTkFont(size=12)).pack(anchor="w", padx=5)
 
-        values = self.tree.item(selected_item[0])["values"]
-        columns = self.tree["columns"]
-        self.current_selected_rule = dict(zip(columns, values))
-
-
-
-        # Clear detail entries
-        for widget in self.detail_scroll.winfo_children():
-            widget.destroy()
-        self.detail_entries = {}
-
-        # Fill detail panel with structured entries
-        # Prioritize important fields
-        important = ["rule_id", "level", "description", "group", "match"]
-
-        # Update summary section
-        self.summary_label.configure(text=f"Rule: {self.current_selected_rule.get('rule_id', 'Unknown')}")
-        for widget in self.summary_scroll.winfo_children():
-            widget.destroy()
-
-        # Grid container inside the scrollable frame
-        summary_grid = ctk.CTkFrame(self.summary_scroll, fg_color="transparent")
-        summary_grid.pack(fill="both", expand=True, padx=5, pady=5)
-        for i in range(3):
-            summary_grid.grid_columnconfigure(i, weight=1)
-
-        all_display_cols = important + [c for c in columns if c not in important and c not in ["id", "is_rule", "filename", "relative_path"]]
-
-        for idx, col in enumerate(all_display_cols):
-            r, c = divmod(idx, 3)
-            # Card-like frame for each attribute
-            f_frame = ctk.CTkFrame(summary_grid, border_width=1, border_color="#444444", fg_color="#333333")
-            f_frame.grid(row=r, column=c, sticky="nsew", padx=8, pady=8)
-
-            # Header Area
-            h_frame = ctk.CTkFrame(f_frame, fg_color="#3d3d3d", corner_radius=0, height=28)
-            h_frame.pack(fill="x", side="top")
-            h_frame.pack_propagate(False)
-
-            lbl = ctk.CTkLabel(h_frame, text=col.replace("_", " ").title(),
-                              font=ctk.CTkFont(size=11, weight="bold"),
-                              text_color="#AAAAAA")
-            lbl.pack(pady=2, padx=10, anchor="w")
-
-            # Content Area
-            val = self.current_selected_rule.get(col, "")
-            if val is None or val == "": val = "None"
-
-            val_lbl = ctk.CTkLabel(f_frame, text=str(val),
-                                  font=ctk.CTkFont(size=12),
-                                  anchor="nw", justify="left",
-                                  wraplength=250)
-            val_lbl.pack(fill="both", expand=True, padx=10, pady=8)
-        fields = all_display_cols
-
-        for i, col in enumerate(fields):
-            val = self.current_selected_rule.get(col, "")
-            if val is None: val = ""
-
-            label = ctk.CTkLabel(self.detail_scroll, text=col.replace("_", " ").title(), font=ctk.CTkFont(size=11))
-            label.grid(row=idx, column=0, padx=5, pady=2, sticky="w")
-
-            entry = ctk.CTkEntry(self.detail_scroll, height=25)
-            entry.grid(row=idx, column=1, padx=5, pady=2, sticky="ew")
-            entry.insert(0, str(val) if val != "None" else "")
-            self.detail_entries[col] = entry
+    def change_appearance_mode_event(self, new_appearance_mode: str):
+        ctk.set_appearance_mode(new_appearance_mode)
 
     def update_filter_list(self, columns):
         for widget in self.scrollable_filters.winfo_children():
@@ -309,318 +231,6 @@ class App(ctk.CTk):
             self.current_folder = folder
             self.scan_rules()
 
-    def scan_rules(self):
-        if not self.current_folder: return
-        self.progress_bar.set(0)
-        files = []
-        for root, _, fnames in os.walk(self.current_folder):
-            for f in fnames:
-                if f.endswith(".xml"):
-                    files.append(os.path.join(root, f))
-
-        if not files: return
-        for i, full_path in enumerate(files):
-            rel_path = os.path.relpath(full_path, self.current_folder)
-            f_hash = get_file_hash(full_path)
-            if f_hash != self.db.get_file_hash(rel_path):
-                rules = parse_wazuh_xml(full_path, self.current_folder)
-                self.db.save_rules(rules)
-                self.db.update_file_state(rel_path, f_hash)
-            self.progress_bar.set((i+1)/len(files))
-            self.update_idletasks()
-
-        self.refresh_table()
-        self.update_analytics()
-
-    def refresh_table(self):
-        search_term = self.search_entry.get()
-        data, columns = self.db.search_rules(search_term)
-        self.tree.delete(*self.tree.get_children())
-        self.tree["columns"] = columns
-        for col in columns:
-            self.tree.heading(col, text=col.replace("_", " ").title())
-            self.tree.column(col, width=120)
-        for row in data: self.tree.insert("", "end", values=row)
-        self.stats_label.configure(text=f"Rules: {len(data)}")
-
-    def update_analytics(self):
-        # Level Stats
-        for w in self.level_frame.winfo_children(): w.destroy()
-        for lvl, count in self.db.get_stats_by_level():
-            row = ctk.CTkFrame(self.level_frame, fg_color="transparent")
-            row.pack(fill="x")
-            ctk.CTkLabel(row, text=f"Level {lvl}:", font=ctk.CTkFont(size=12)).pack(side="left")
-            ctk.CTkLabel(row, text=str(count), font=ctk.CTkFont(size=12, weight="bold")).pack(side="right")
-
-        # Range Stats
-        for w in self.range_frame.winfo_children(): w.destroy()
-        for r_start, count in self.db.get_stats_by_id_range():
-            row = ctk.CTkFrame(self.range_frame, fg_color="transparent")
-            row.pack(fill="x")
-            ctk.CTkLabel(row, text=f"{r_start}-{r_start+9999}:", font=ctk.CTkFont(size=12)).pack(side="left")
-            ctk.CTkLabel(row, text=str(count), font=ctk.CTkFont(size=12, weight="bold")).pack(side="right")
-
-    def on_tree_select(self, event):
-        sel = self.tree.selection()
-        if not sel: return
-        values = self.tree.item(sel[0])["values"]
-        cols = self.tree["columns"]
-        rule = dict(zip(cols, values))
-        for w in self.detail_container.winfo_children(): w.destroy()
-        for f in ["rule_id", "level", "description", "group", "filename"]:
-            if f in rule:
-                row = ctk.CTkFrame(self.detail_container, fg_color="transparent")
-                row.pack(fill="x", pady=2)
-                ctk.CTkLabel(row, text=f"{f.replace('_',' ').title()}:", font=ctk.CTkFont(size=11, weight="bold"), text_color="#888888").pack(anchor="w")
-                ctk.CTkLabel(row, text=str(rule[f]), wraplength=340, justify="left", font=ctk.CTkFont(size=12)).pack(anchor="w", padx=5)
-
-    def import_rules(self):
-        if not self.current_folder: return
-        filepath = filedialog.askopenfilename(filetypes=[("CSV/XML", "*.csv *.xml")])
-        if not filepath: return
-        try:
-            if filepath.endswith(".csv"):
-                from wazuh_manager.parser import parse_rules_from_csv
-                rules = parse_rules_from_csv(filepath)
-            else:
-                rules = parse_wazuh_xml(filepath, os.path.dirname(filepath))
-            if rules:
-                save_rules_to_xml(rules, os.path.join(self.current_folder, "imported_rules.xml"))
-                self.scan_rules()
-        except Exception as e: messagebox.showerror("Error", str(e))
-
-    def advanced_import_flow(self):
-        if not self.current_folder: return
-        filepath = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
-        if not filepath: return
-        try:
-            rules = csv_to_json_rules(filepath, self.db.get_columns())
-            dialog = AdvancedImportDialog(self, rules)
-            self.wait_window(dialog)
-            if dialog.approved:
-                for rule in rules:
-                    fname = rule.get("filename") or f"adv_imp_{rule['rule_id']}.xml"
-                    save_rules_to_xml([rule], os.path.join(self.current_folder, fname))
-                self.scan_rules()
-        except Exception as e: messagebox.showerror("Error", str(e))
-
-    def export_to_csv(self):
-        data, cols = self.db.search_rules(self.search_entry.get())
-        f = filedialog.asksaveasfilename(defaultextension=".csv")
-        if f:
-            with open(f, "w", newline="", encoding="utf-8") as csvfile:
-                writer = csv.writer(csvfile)
-                writer.writerow(cols)
-                writer.writerows(data)
-
-    def full_backup(self):
-        data, cols = self.db.search_rules("")
-        f = filedialog.asksaveasfilename(defaultextension=".csv")
-        if f:
-            with open(f, "w", newline="", encoding="utf-8") as csvfile:
-                writer = csv.writer(csvfile)
-                writer.writerow(cols)
-                writer.writerows(data)
-
-    def add_rule(self):
-        if not self.current_folder: return
-        cols = self.db.get_columns()
-        dialog = RuleDialog(self, title="Add New Rule", columns=cols)
-        self.wait_window(dialog)
-        if dialog.result:
-            fname = f"custom_rule_{dialog.result['rule_id']}.xml"
-            create_rule_xml(dialog.result, os.path.join(self.current_folder, fname))
-            self.scan_rules()
-
-    def edit_rule(self):
-        sel = self.tree.selection()
-        if not sel: return
-        values = self.tree.item(sel[0])["values"]
-        cols = self.tree["columns"]
-        rule = dict(zip(cols, values))
-        dialog = RuleDialog(self, title="Edit Rule", initial_data=rule, columns=self.db.get_columns())
-        self.wait_window(dialog)
-        if dialog.result:
-            filepath = os.path.join(self.current_folder, rule_data["relative_path"])
-            try:
-                # Save to history before updating if possible
-                old_raw = rule_data.get("raw_xml")
-                if old_raw:
-                    self.db.add_to_history(rule_data["rule_id"], rule_data["relative_path"], old_raw)
-
-                update_rule_xml(rule_data["rule_id"], dialog.result, filepath)
-                messagebox.showinfo("Success", "Rule updated successfully.")
-                self.scan_rules()
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to update rule: {e}")
-
-    def clone_rule(self):
-        sel = self.tree.selection()
-        if not sel: return
-        values = self.tree.item(sel[0])["values"]
-        cols = self.tree["columns"]
-        rule = dict(zip(cols, values))
-        clone = rule.copy()
-        clone["rule_id"] = f"{rule['rule_id']}_clone"
-        dialog = RuleDialog(self, title="Clone Rule", initial_data=clone, columns=self.db.get_columns())
-        self.wait_window(dialog)
-        if dialog.result:
-            fname = f"cloned_rule_{dialog.result['rule_id']}.xml"
-            create_rule_xml(dialog.result, os.path.join(self.current_folder, fname))
-            self.scan_rules()
-
-    def delete_rule(self):
-        sel = self.tree.selection()
-        if not sel: return
-        values = self.tree.item(sel[0])["values"]
-        cols = self.tree["columns"]
-        rule = dict(zip(cols, values))
-        if messagebox.askyesno("Confirm", f"Delete rule {rule['rule_id']}?"):
-            if delete_rule_from_xml(rule["rule_id"], os.path.join(self.current_folder, rule["relative_path"])):
-                self.db.delete_rule(rule["rule_id"], rule["relative_path"])
-                self.scan_rules()
-            else:
-                messagebox.showerror("Error", f"Could not find rule {rule_data['rule_id']} in file.")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to delete rule: {e}")
-
-    def show_duplicates(self):
-        self.showing_duplicates = True
-        self.refresh_table()
-
-    def export_to_csv(self):
-        selected_cols = [col for col, var in self.column_vars.items() if var.get()]
-        search_term = self.search_entry.get()
-        data, columns = self.db.search_rules(search_term, target_columns=selected_cols, show_duplicates=self.showing_duplicates)
-
-        if not data:
-            messagebox.showinfo("Export", "No results to export.")
-            return
-
-        filepath = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
-        if not filepath:
-            return
-
-        try:
-            import csv
-            with open(filepath, "w", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                writer.writerow(columns)
-                writer.writerows(data)
-            messagebox.showinfo("Success", f"Data exported to {filepath}")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to export data: {e}")
-
-
-    def import_rules(self):
-        if not self.current_folder:
-            messagebox.showwarning("Warning", "Please select a target folder first.")
-            return
-
-        filepath = filedialog.askopenfilename(filetypes=[("CSV or XML files", "*.csv *.xml"), ("CSV files", "*.csv"), ("XML files", "*.xml")])
-        if not filepath:
-            return
-
-        imported_rules = []
-        try:
-            if filepath.endswith(".csv"):
-                from wazuh_manager.parser import parse_rules_from_csv
-                imported_rules = parse_rules_from_csv(filepath)
-            elif filepath.endswith(".xml"):
-                from wazuh_manager.parser import parse_wazuh_xml
-                imported_rules = parse_wazuh_xml(filepath, os.path.dirname(filepath))
-
-            if not imported_rules:
-                messagebox.showinfo("Import", "No valid rules found in the selected file.")
-                return
-
-            # Group rules by their destination filename
-            # If data has relative_path or filename, use it. Otherwise use default.
-            files_to_create = {}
-            for rule in imported_rules:
-                fname = rule.get("filename") or rule.get("relative_path")
-                if not fname or not fname.endswith(".xml"):
-                    fname = f"imported_rules_{os.path.basename(filepath).split('.')[0]}.xml"
-
-                if fname not in files_to_create:
-                    files_to_create[fname] = []
-                files_to_create[fname].append(rule)
-
-            from wazuh_manager.parser import save_rules_to_xml
-            count = 0
-            for fname, rules in files_to_create.items():
-                dest_path = os.path.join(self.current_folder, os.path.basename(fname))
-                save_rules_to_xml(rules, dest_path)
-                count += len(rules)
-
-            messagebox.showinfo("Success", f"Successfully imported {count} rules into {len(files_to_create)} files.")
-            self.scan_rules()
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to import rules: {e}")
-
-    def full_backup(self):
-        data, columns = self.db.search_rules("")
-        if not data:
-            messagebox.showinfo("Backup", "No rules to backup.")
-            return
-
-        filepath = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
-        if not filepath:
-            return
-
-        try:
-            import csv
-            with open(filepath, "w", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                writer.writerow(columns)
-                writer.writerows(data)
-            messagebox.showinfo("Success", f"Full backup saved to {filepath}")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to create backup: {e}")
-
-    def advanced_import_flow(self):
-        if not self.current_folder:
-            messagebox.showwarning("Warning", "Please select a target folder first.")
-            return
-
-        filepath = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
-        if not filepath:
-            return
-
-        try:
-            from wazuh_manager.advanced_importer import csv_to_json_rules
-            rules = csv_to_json_rules(filepath)
-
-            if not rules:
-                messagebox.showinfo("Advanced Import", "No valid rules found in the CSV.")
-                return
-
-            dialog = AdvancedImportDialog(self, rules)
-            self.wait_window(dialog)
-
-            if dialog.approved:
-                # Group rules by their destination filename
-                files_to_create = {}
-                for rule in rules:
-                    fname = rule.get("filename") or rule.get("relative_path")
-                    if not fname or not fname.endswith(".xml"):
-                        fname = f"adv_imported_{os.path.basename(filepath).split('.')[0]}.xml"
-
-                    if fname not in files_to_create:
-                        files_to_create[fname] = []
-                    files_to_create[fname].append(rule)
-
-                from wazuh_manager.parser import save_rules_to_xml
-                count = 0
-                for fname, rules_group in files_to_create.items():
-                    dest_path = os.path.join(self.current_folder, os.path.basename(fname))
-                    save_rules_to_xml(rules_group, dest_path)
-                    count += len(rules_group)
-
-                messagebox.showinfo("Success", f"Advanced Import complete. Imported {count} rules into {len(files_to_create)} files.")
-                self.scan_rules()
-        except Exception as e:
-            messagebox.showerror("Error", f"Advanced Import failed: {e}")
     def scan_rules(self):
         if not self.current_folder:
             return
@@ -652,6 +262,7 @@ class App(ctk.CTk):
             self.progress_bar.set(1)
 
         self.refresh_table()
+        self.update_analytics()
 
     def refresh_table(self):
         selected_cols = [col for col, var in self.column_vars.items() if var.get()]
@@ -688,6 +299,221 @@ class App(ctk.CTk):
             cursor.execute("SELECT COUNT(*) FROM file_states")
             file_count = cursor.fetchone()[0]
             self.files_label.configure(text=f"Files: {file_count}")
+
+    def update_analytics(self):
+        # Level Stats
+        for w in self.level_frame.winfo_children(): w.destroy()
+        for lvl, count in self.db.get_stats_by_level():
+            row = ctk.CTkFrame(self.level_frame, fg_color="transparent")
+            row.pack(fill="x")
+            ctk.CTkLabel(row, text=f"Level {lvl}:", font=ctk.CTkFont(size=12)).pack(side="left")
+            ctk.CTkLabel(row, text=str(count), font=ctk.CTkFont(size=12, weight="bold")).pack(side="right")
+
+        # Range Stats
+        for w in self.range_frame.winfo_children(): w.destroy()
+        for r_start, count in self.db.get_stats_by_id_range():
+            row = ctk.CTkFrame(self.range_frame, fg_color="transparent")
+            row.pack(fill="x")
+            ctk.CTkLabel(row, text=f"{r_start}-{r_start+9999}:", font=ctk.CTkFont(size=12)).pack(side="left")
+            ctk.CTkLabel(row, text=str(count), font=ctk.CTkFont(size=12, weight="bold")).pack(side="right")
+
+    def import_rules(self):
+        if not self.current_folder:
+            messagebox.showwarning("Warning", "Please select a target folder first.")
+            return
+
+        filepath = filedialog.askopenfilename(filetypes=[("CSV or XML files", "*.csv *.xml"), ("CSV files", "*.csv"), ("XML files", "*.xml")])
+        if not filepath:
+            return
+
+        imported_rules = []
+        try:
+            if filepath.endswith(".csv"):
+                from wazuh_manager.parser import parse_rules_from_csv
+                imported_rules = parse_rules_from_csv(filepath)
+            elif filepath.endswith(".xml"):
+                from wazuh_manager.parser import parse_wazuh_xml
+                imported_rules = parse_wazuh_xml(filepath, os.path.dirname(filepath))
+
+            if not imported_rules:
+                messagebox.showinfo("Import", "No valid rules found in the selected file.")
+                return
+
+            files_to_create = {}
+            for rule in imported_rules:
+                fname = rule.get("filename") or rule.get("relative_path")
+                if not fname or not fname.endswith(".xml"):
+                    fname = f"imported_rules_{os.path.basename(filepath).split('.')[0]}.xml"
+
+                if fname not in files_to_create:
+                    files_to_create[fname] = []
+                files_to_create[fname].append(rule)
+
+            count = 0
+            for fname, rules in files_to_create.items():
+                dest_path = os.path.join(self.current_folder, os.path.basename(fname))
+                save_rules_to_xml(rules, dest_path)
+                count += len(rules)
+
+            messagebox.showinfo("Success", f"Successfully imported {count} rules into {len(files_to_create)} files.")
+            self.scan_rules()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to import rules: {e}")
+
+    def advanced_import_flow(self):
+        if not self.current_folder:
+            messagebox.showwarning("Warning", "Please select a target folder first.")
+            return
+
+        filepath = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
+        if not filepath:
+            return
+
+        try:
+            rules = csv_to_json_rules(filepath, self.db.get_columns())
+
+            if not rules:
+                messagebox.showinfo("Advanced Import", "No valid rules found in the CSV.")
+                return
+
+            dialog = AdvancedImportDialog(self, rules)
+            self.wait_window(dialog)
+
+            if dialog.approved:
+                files_to_create = {}
+                for rule in rules:
+                    fname = rule.get("filename") or rule.get("relative_path")
+                    if not fname or not fname.endswith(".xml"):
+                        fname = f"adv_imported_{os.path.basename(filepath).split('.')[0]}.xml"
+
+                    if fname not in files_to_create:
+                        files_to_create[fname] = []
+                    files_to_create[fname].append(rule)
+
+                count = 0
+                for fname, rules_group in files_to_create.items():
+                    dest_path = os.path.join(self.current_folder, os.path.basename(fname))
+                    save_rules_to_xml(rules_group, dest_path)
+                    count += len(rules_group)
+
+                messagebox.showinfo("Success", f"Advanced Import complete. Imported {count} rules into {len(files_to_create)} files.")
+                self.scan_rules()
+        except Exception as e:
+            messagebox.showerror("Error", f"Advanced Import failed: {e}")
+
+    def export_to_csv(self):
+        selected_cols = [col for col, var in self.column_vars.items() if var.get()]
+        search_term = self.search_entry.get()
+        data, columns = self.db.search_rules(search_term, target_columns=selected_cols, show_duplicates=self.showing_duplicates)
+
+        if not data:
+            messagebox.showinfo("Export", "No results to export.")
+            return
+
+        filepath = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
+        if not filepath:
+            return
+
+        try:
+            with open(filepath, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(columns)
+                writer.writerows(data)
+            messagebox.showinfo("Success", f"Data exported to {filepath}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to export data: {e}")
+
+    def full_backup(self):
+        data, columns = self.db.search_rules("")
+        if not data:
+            messagebox.showinfo("Backup", "No rules to backup.")
+            return
+
+        filepath = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
+        if not filepath:
+            return
+
+        try:
+            with open(filepath, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(columns)
+                writer.writerows(data)
+            messagebox.showinfo("Success", f"Full backup saved to {filepath}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to create backup: {e}")
+
+    def add_rule(self):
+        if not self.current_folder:
+            messagebox.showwarning("Warning", "Please select a target folder first.")
+            return
+        cols = self.db.get_columns()
+        dialog = RuleDialog(self, title="Add New Rule", columns=cols, db=self.db)
+        self.wait_window(dialog)
+        if dialog.result:
+            fname = f"custom_rule_{dialog.result['rule_id']}.xml"
+            create_rule_xml(dialog.result, os.path.join(self.current_folder, fname))
+            self.scan_rules()
+
+    def edit_rule(self):
+        sel = self.tree.selection()
+        if not sel: return
+        values = self.tree.item(sel[0])["values"]
+        cols = self.tree["columns"]
+        rule = dict(zip(cols, values))
+        dialog = RuleDialog(self, title="Edit Rule", initial_data=rule, columns=self.db.get_columns(), db=self.db)
+        self.wait_window(dialog)
+        if dialog.result:
+            filepath = os.path.join(self.current_folder, rule["relative_path"])
+            try:
+                # Save to history before updating
+                old_raw = rule.get("raw_xml")
+                if old_raw:
+                    self.db.add_to_history(rule["rule_id"], rule["relative_path"], old_raw)
+
+                update_rule_xml(rule["rule_id"], dialog.result, filepath)
+                messagebox.showinfo("Success", "Rule updated successfully.")
+                self.scan_rules()
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to update rule: {e}")
+
+    def clone_rule(self):
+        sel = self.tree.selection()
+        if not sel: return
+        values = self.tree.item(sel[0])["values"]
+        cols = self.tree["columns"]
+        rule = dict(zip(cols, values))
+        clone = rule.copy()
+        clone["rule_id"] = f"{rule['rule_id']}_clone"
+        dialog = RuleDialog(self, title="Clone Rule", initial_data=clone, columns=self.db.get_columns(), db=self.db)
+        self.wait_window(dialog)
+        if dialog.result:
+            fname = f"cloned_rule_{dialog.result['rule_id']}.xml"
+            create_rule_xml(dialog.result, os.path.join(self.current_folder, fname))
+            self.scan_rules()
+
+    def delete_rule(self):
+        sel = self.tree.selection()
+        if not sel: return
+        values = self.tree.item(sel[0])["values"]
+        cols = self.tree["columns"]
+        rule = dict(zip(cols, values))
+        if messagebox.askyesno("Confirm", f"Delete rule {rule['rule_id']}?"):
+            try:
+                if delete_rule_from_xml(rule["rule_id"], os.path.join(self.current_folder, rule["relative_path"])):
+                    self.db.delete_rule(rule["rule_id"], rule["relative_path"])
+                    self.scan_rules()
+                else:
+                    messagebox.showerror("Error", f"Could not find rule {rule['rule_id']} in file.")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to delete rule: {e}")
+
+    def show_duplicates(self):
+        self.showing_duplicates = not self.showing_duplicates
+        if self.showing_duplicates:
+            self.dup_btn.configure(fg_color="orange")
+        else:
+            self.dup_btn.configure(fg_color=["#3B8ED0", "#1F6AA5"])
+        self.refresh_table()
 
 class RuleDialog(ctk.CTkToplevel):
     def __init__(self, parent, title="Rule Dialog", initial_data=None, columns=None, db=None):
@@ -738,7 +564,7 @@ class RuleDialog(ctk.CTkToplevel):
         self.scrollable_frame.grid_columnconfigure(1, weight=1)
 
         excluded = ["id", "is_rule", "filename", "relative_path", "raw_xml"]
-        self.fields = ["rule_id", "group", "cloned_from"]
+        self.fields = ["rule_id", "group", "level", "description"]
         if columns:
             for col in columns:
                 if col not in excluded and col not in self.fields:
@@ -786,7 +612,6 @@ class RuleDialog(ctk.CTkToplevel):
             return
 
         HistoryWindow(self, history, self.xml_editor)
-        # To be implemented in next step
 
     def save(self):
         raw_xml = self.xml_editor.get("1.0", "end").strip()
@@ -807,27 +632,8 @@ class RuleDialog(ctk.CTkToplevel):
             messagebox.showwarning("Warning", "Rule ID is required.")
             return
 
-        self.result = {k: v.get() for k, v in self.entries.items() if v.get()}
         self.destroy()
-class AdvancedImportDialog(ctk.CTkToplevel):
-    def __init__(self, parent, rules):
-        super().__init__(parent)
-        self.title("Approve Import")
-        self.geometry("800x600")
-        self.rules = rules
-        self.approved = False
-        ctk.CTkLabel(self, text=f"Review {len(rules)} rules for import", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=10)
-        self.tree = ttk.Treeview(self, columns=["ID", "Level", "Description"], show="headings")
-        for c in ["ID", "Level", "Description"]: self.tree.heading(c, text=c)
-        self.tree.pack(fill="both", expand=True, padx=20)
-        for r in rules: self.tree.insert("", "end", values=[r.get("rule_id"), r.get("level"), r.get("description")])
-        self.btn_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.btn_frame.pack(pady=20)
-        ctk.CTkButton(self.btn_frame, text="Approve", command=self.approve, fg_color="#5cb85c").pack(side="left", padx=10)
-        ctk.CTkButton(self.btn_frame, text="Cancel", command=self.destroy, fg_color="#d9534f").pack(side="left", padx=10)
-    def approve(self):
-        self.approved = True
-        self.destroy()
+
 class AdvancedImportDialog(ctk.CTkToplevel):
     def __init__(self, parent, rules):
         super().__init__(parent)
@@ -876,7 +682,6 @@ class AdvancedImportDialog(ctk.CTkToplevel):
     def approve(self):
         self.approved = True
         self.destroy()
-
 
 class HistoryWindow(ctk.CTkToplevel):
     def __init__(self, parent, history_data, editor_widget):

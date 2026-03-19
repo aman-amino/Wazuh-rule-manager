@@ -802,8 +802,13 @@ class RuleDialog(ctk.CTkToplevel):
             return
 
         self.result = {k: v.get() for k, v in self.entries.items() if v.get()}
-        self.destroy()
+        self.result["raw_xml"] = raw_xml
+        if not self.result.get("rule_id"):
+            messagebox.showwarning("Warning", "Rule ID is required.")
+            return
 
+        self.result = {k: v.get() for k, v in self.entries.items() if v.get()}
+        self.destroy()
 class AdvancedImportDialog(ctk.CTkToplevel):
     def __init__(self, parent, rules):
         super().__init__(parent)

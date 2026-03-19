@@ -31,24 +31,68 @@ class App(ctk.CTk):
         self.logo_label.pack(pady=(30, 20), padx=20)
 
         # Action Groups
-        self.create_sidebar_button("📁 Select Folder", self.select_folder)
-        self.create_sidebar_button("🔍 Scan Rules", self.scan_rules)
+        self.action_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.action_frame.pack(pady=5, padx=10, fill="x")
 
-        ctk.CTkLabel(self.sidebar, text="Rule Operations", font=ctk.CTkFont(size=12, weight="bold"), text_color="#888888").pack(pady=(15, 5))
-        self.ops_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
-        self.ops_frame.pack(fill="x", padx=10)
-        self.create_grid_button(self.ops_frame, "➕ Add", self.add_rule, 0, 0)
-        self.create_grid_button(self.ops_frame, "📝 Edit", self.edit_rule, 0, 1)
-        self.create_grid_button(self.ops_frame, "👯 Clone", self.clone_rule, 1, 0)
-        self.create_grid_button(self.ops_frame, "🗑️ Delete", self.delete_rule, 1, 1, color="#d9534f")
+        # Folder & Scan
+        self.folder_btn = ctk.CTkButton(self.action_frame, text="📁 Select Folder", command=self.select_folder, height=32)
+        self.folder_btn.pack(pady=4, padx=10, fill="x")
 
-        ctk.CTkLabel(self.sidebar, text="Data Tools", font=ctk.CTkFont(size=12, weight="bold"), text_color="#888888").pack(pady=(15, 5))
-        self.create_sidebar_button("📥 Import Rules", self.import_rules)
-        self.create_sidebar_button("🚀 Advanced Import", self.advanced_import_flow)
-        self.create_sidebar_button("📤 Export CSV", self.export_to_csv)
-        self.create_sidebar_button("📦 Full Backup", self.full_backup)
+        self.scan_btn = ctk.CTkButton(self.action_frame, text="🔍 Scan Rules", command=self.scan_rules, height=32)
+        self.scan_btn.pack(pady=4, padx=10, fill="x")
 
-        # Stats at the bottom
+        # Rule Operations (Add, Edit, Clone, Delete)
+        self.rule_ops_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.rule_ops_frame.pack(pady=5, padx=10, fill="x")
+
+        self.add_btn = ctk.CTkButton(self.rule_ops_frame, text="➕ Add", command=self.add_rule, width=110, height=32)
+        self.add_btn.grid(row=0, column=0, pady=4, padx=5)
+
+        self.edit_btn = ctk.CTkButton(self.rule_ops_frame, text="📝 Edit", command=self.edit_rule, width=110, height=32)
+        self.edit_btn.grid(row=0, column=1, pady=4, padx=5)
+
+        self.clone_btn = ctk.CTkButton(self.rule_ops_frame, text="👯 Clone", command=self.clone_rule, width=110, height=32)
+        self.clone_btn.grid(row=1, column=0, pady=4, padx=5)
+
+        self.delete_btn = ctk.CTkButton(self.rule_ops_frame, text="🗑️ Delete", command=self.delete_rule, width=110, height=32,
+                                        fg_color="#d9534f", hover_color="#c9302c")
+        self.delete_btn.grid(row=1, column=1, pady=4, padx=5)
+
+        # Data & Tools
+        self.tools_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.tools_frame.pack(pady=5, padx=10, fill="x")
+
+        self.dup_btn = ctk.CTkButton(self.tools_frame, text="👯 Show Duplicates", command=self.show_duplicates, height=32)
+        self.dup_btn.pack(pady=4, padx=10, fill="x")
+
+        self.export_btn = ctk.CTkButton(self.tools_frame, text="📤 Export CSV", command=self.export_to_csv, height=32)
+        self.export_btn.pack(pady=4, padx=10, fill="x")
+        self.import_btn = ctk.CTkButton(self.tools_frame, text="📥 Import Rules", command=self.import_rules, height=32)
+        self.import_btn.pack(pady=4, padx=10, fill="x")
+        self.backup_btn = ctk.CTkButton(self.tools_frame, text="📦 Full Backup", command=self.full_backup, height=32)
+        self.backup_btn.pack(pady=4, padx=10, fill="x")
+        self.adv_import_btn = ctk.CTkButton(self.tools_frame, text="🚀 Advanced Import", command=self.advanced_import_flow, height=32)
+        self.adv_import_btn.pack(pady=4, padx=10, fill="x")
+
+        # Appearance Mode
+        self.appearance_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.appearance_frame.pack(pady=5, padx=10, fill="x")
+        self.appearance_label = ctk.CTkLabel(self.appearance_frame, text="Appearance:", font=ctk.CTkFont(size=12))
+        self.appearance_label.pack(side="left", padx=10)
+        self.appearance_menu = ctk.CTkOptionMenu(self.appearance_frame, values=["Dark", "Light", "System"],
+                                                 command=self.change_appearance_mode_event, width=120)
+        self.appearance_menu.pack(side="right", padx=10)
+        self.appearance_menu.set("Dark")
+
+        # Search Filters Section (Filtering of rules)
+        self.filter_label = ctk.CTkLabel(self.sidebar, text="Filter by Columns", font=ctk.CTkFont(size=14, weight="bold"))
+        self.filter_label.pack(pady=(15, 5), padx=20)
+
+        self.scrollable_filters = ctk.CTkScrollableFrame(self.sidebar, label_text="", height=300)
+        self.scrollable_filters.pack(pady=5, padx=10, fill="both", expand=True)
+        self.column_vars = {}
+
+        # Stats at the very bottom
         self.stats_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         self.stats_frame.pack(pady=10, padx=20, side="bottom", fill="x")
         self.progress_bar = ctk.CTkProgressBar(self.stats_frame)
@@ -128,6 +172,136 @@ class App(ctk.CTk):
     def clear_search(self):
         self.search_entry.delete(0, tk.END)
         self.refresh_table()
+
+    def sort_column(self, col):
+        if self.sort_column_id == col:
+            self.sort_reverse = not self.sort_reverse
+        else:
+            self.sort_column_id = col
+            self.sort_reverse = False
+
+        l = [(self.tree.set(k, col), k) for k in self.tree.get_children('')]
+
+        # Try to sort numerically if possible
+        try:
+            l.sort(key=lambda t: float(t[0]), reverse=self.sort_reverse)
+        except ValueError:
+            l.sort(reverse=self.sort_reverse)
+
+        for index, (val, k) in enumerate(l):
+            self.tree.move(k, '', index)
+
+        # Update header to show sort direction (simple version)
+        for c in self.tree["columns"]:
+            self.tree.heading(c, text=c.replace("_", " ").title())
+
+        suffix = " ↑" if self.sort_reverse else " ↓"
+        self.tree.heading(col, text=col.replace("_", " ").title() + suffix)
+
+    def save_detail_edits(self):
+        if not self.current_selected_rule:
+            messagebox.showwarning("Warning", "Please select a rule first.")
+            return
+
+        rule_data = self.current_selected_rule
+        updated_data = {k: v.get() for k, v in self.detail_entries.items() if v.get()}
+
+        if not updated_data.get("rule_id"):
+             messagebox.showerror("Error", "Rule ID cannot be empty.")
+             return
+
+        filepath = os.path.join(self.current_folder, rule_data["relative_path"])
+        try:
+            update_rule_xml(rule_data["rule_id"], updated_data, filepath)
+            messagebox.showinfo("Success", "Rule updated successfully.")
+            self.scan_rules()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to update: {e}")
+
+    def on_tree_select(self, event):
+        selected_item = self.tree.selection()
+        if not selected_item:
+            return
+
+        values = self.tree.item(selected_item[0])["values"]
+        columns = self.tree["columns"]
+        self.current_selected_rule = dict(zip(columns, values))
+
+
+
+        # Clear detail entries
+        for widget in self.detail_scroll.winfo_children():
+            widget.destroy()
+        self.detail_entries = {}
+
+        # Fill detail panel with structured entries
+        # Prioritize important fields
+        important = ["rule_id", "level", "description", "group", "match"]
+
+        # Update summary section
+        self.summary_label.configure(text=f"Rule: {self.current_selected_rule.get('rule_id', 'Unknown')}")
+        for widget in self.summary_scroll.winfo_children():
+            widget.destroy()
+
+        # Grid container inside the scrollable frame
+        summary_grid = ctk.CTkFrame(self.summary_scroll, fg_color="transparent")
+        summary_grid.pack(fill="both", expand=True, padx=5, pady=5)
+        for i in range(3):
+            summary_grid.grid_columnconfigure(i, weight=1)
+
+        all_display_cols = important + [c for c in columns if c not in important and c not in ["id", "is_rule", "filename", "relative_path"]]
+
+        for idx, col in enumerate(all_display_cols):
+            r, c = divmod(idx, 3)
+            # Card-like frame for each attribute
+            f_frame = ctk.CTkFrame(summary_grid, border_width=1, border_color="#444444", fg_color="#333333")
+            f_frame.grid(row=r, column=c, sticky="nsew", padx=8, pady=8)
+
+            # Header Area
+            h_frame = ctk.CTkFrame(f_frame, fg_color="#3d3d3d", corner_radius=0, height=28)
+            h_frame.pack(fill="x", side="top")
+            h_frame.pack_propagate(False)
+
+            lbl = ctk.CTkLabel(h_frame, text=col.replace("_", " ").title(),
+                              font=ctk.CTkFont(size=11, weight="bold"),
+                              text_color="#AAAAAA")
+            lbl.pack(pady=2, padx=10, anchor="w")
+
+            # Content Area
+            val = self.current_selected_rule.get(col, "")
+            if val is None or val == "": val = "None"
+
+            val_lbl = ctk.CTkLabel(f_frame, text=str(val),
+                                  font=ctk.CTkFont(size=12),
+                                  anchor="nw", justify="left",
+                                  wraplength=250)
+            val_lbl.pack(fill="both", expand=True, padx=10, pady=8)
+        fields = all_display_cols
+
+        for i, col in enumerate(fields):
+            val = self.current_selected_rule.get(col, "")
+            if val is None: val = ""
+
+            label = ctk.CTkLabel(self.detail_scroll, text=col.replace("_", " ").title(), font=ctk.CTkFont(size=11))
+            label.grid(row=idx, column=0, padx=5, pady=2, sticky="w")
+
+            entry = ctk.CTkEntry(self.detail_scroll, height=25)
+            entry.grid(row=idx, column=1, padx=5, pady=2, sticky="ew")
+            entry.insert(0, str(val) if val != "None" else "")
+            self.detail_entries[col] = entry
+
+    def update_filter_list(self, columns):
+        for widget in self.scrollable_filters.winfo_children():
+            widget.destroy()
+
+        new_vars = {}
+        for col in columns:
+            var = tk.BooleanVar(value=False)
+            new_vars[col] = var
+            cb = ctk.CTkCheckBox(self.scrollable_filters, text=col.replace("_", " ").title(), variable=var,
+                                 command=self.refresh_table, font=ctk.CTkFont(size=11))
+            cb.pack(pady=2, padx=5, anchor="w")
+        self.column_vars = new_vars
 
     def select_folder(self):
         folder = filedialog.askdirectory()
@@ -295,6 +469,215 @@ class App(ctk.CTk):
             if delete_rule_from_xml(rule["rule_id"], os.path.join(self.current_folder, rule["relative_path"])):
                 self.db.delete_rule(rule["rule_id"], rule["relative_path"])
                 self.scan_rules()
+            else:
+                messagebox.showerror("Error", f"Could not find rule {rule_data['rule_id']} in file.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to delete rule: {e}")
+
+    def show_duplicates(self):
+        self.showing_duplicates = True
+        self.refresh_table()
+
+    def export_to_csv(self):
+        selected_cols = [col for col, var in self.column_vars.items() if var.get()]
+        search_term = self.search_entry.get()
+        data, columns = self.db.search_rules(search_term, target_columns=selected_cols, show_duplicates=self.showing_duplicates)
+
+        if not data:
+            messagebox.showinfo("Export", "No results to export.")
+            return
+
+        filepath = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
+        if not filepath:
+            return
+
+        try:
+            import csv
+            with open(filepath, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(columns)
+                writer.writerows(data)
+            messagebox.showinfo("Success", f"Data exported to {filepath}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to export data: {e}")
+
+
+    def import_rules(self):
+        if not self.current_folder:
+            messagebox.showwarning("Warning", "Please select a target folder first.")
+            return
+
+        filepath = filedialog.askopenfilename(filetypes=[("CSV or XML files", "*.csv *.xml"), ("CSV files", "*.csv"), ("XML files", "*.xml")])
+        if not filepath:
+            return
+
+        imported_rules = []
+        try:
+            if filepath.endswith(".csv"):
+                from wazuh_manager.parser import parse_rules_from_csv
+                imported_rules = parse_rules_from_csv(filepath)
+            elif filepath.endswith(".xml"):
+                from wazuh_manager.parser import parse_wazuh_xml
+                imported_rules = parse_wazuh_xml(filepath, os.path.dirname(filepath))
+
+            if not imported_rules:
+                messagebox.showinfo("Import", "No valid rules found in the selected file.")
+                return
+
+            # Group rules by their destination filename
+            # If data has relative_path or filename, use it. Otherwise use default.
+            files_to_create = {}
+            for rule in imported_rules:
+                fname = rule.get("filename") or rule.get("relative_path")
+                if not fname or not fname.endswith(".xml"):
+                    fname = f"imported_rules_{os.path.basename(filepath).split('.')[0]}.xml"
+
+                if fname not in files_to_create:
+                    files_to_create[fname] = []
+                files_to_create[fname].append(rule)
+
+            from wazuh_manager.parser import save_rules_to_xml
+            count = 0
+            for fname, rules in files_to_create.items():
+                dest_path = os.path.join(self.current_folder, os.path.basename(fname))
+                save_rules_to_xml(rules, dest_path)
+                count += len(rules)
+
+            messagebox.showinfo("Success", f"Successfully imported {count} rules into {len(files_to_create)} files.")
+            self.scan_rules()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to import rules: {e}")
+
+    def full_backup(self):
+        data, columns = self.db.search_rules("")
+        if not data:
+            messagebox.showinfo("Backup", "No rules to backup.")
+            return
+
+        filepath = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
+        if not filepath:
+            return
+
+        try:
+            import csv
+            with open(filepath, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(columns)
+                writer.writerows(data)
+            messagebox.showinfo("Success", f"Full backup saved to {filepath}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to create backup: {e}")
+
+    def advanced_import_flow(self):
+        if not self.current_folder:
+            messagebox.showwarning("Warning", "Please select a target folder first.")
+            return
+
+        filepath = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
+        if not filepath:
+            return
+
+        try:
+            from wazuh_manager.advanced_importer import csv_to_json_rules
+            rules = csv_to_json_rules(filepath)
+
+            if not rules:
+                messagebox.showinfo("Advanced Import", "No valid rules found in the CSV.")
+                return
+
+            dialog = AdvancedImportDialog(self, rules)
+            self.wait_window(dialog)
+
+            if dialog.approved:
+                # Group rules by their destination filename
+                files_to_create = {}
+                for rule in rules:
+                    fname = rule.get("filename") or rule.get("relative_path")
+                    if not fname or not fname.endswith(".xml"):
+                        fname = f"adv_imported_{os.path.basename(filepath).split('.')[0]}.xml"
+
+                    if fname not in files_to_create:
+                        files_to_create[fname] = []
+                    files_to_create[fname].append(rule)
+
+                from wazuh_manager.parser import save_rules_to_xml
+                count = 0
+                for fname, rules_group in files_to_create.items():
+                    dest_path = os.path.join(self.current_folder, os.path.basename(fname))
+                    save_rules_to_xml(rules_group, dest_path)
+                    count += len(rules_group)
+
+                messagebox.showinfo("Success", f"Advanced Import complete. Imported {count} rules into {len(files_to_create)} files.")
+                self.scan_rules()
+        except Exception as e:
+            messagebox.showerror("Error", f"Advanced Import failed: {e}")
+    def scan_rules(self):
+        if not self.current_folder:
+            return
+
+        files_to_scan = []
+        for root, _, files in os.walk(self.current_folder):
+            for file in files:
+                if file.endswith(".xml"):
+                    full_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(full_path, self.current_folder)
+
+                    file_hash = get_file_hash(full_path)
+                    existing_hash = self.db.get_file_hash(rel_path)
+
+                    if file_hash != existing_hash:
+                        files_to_scan.append((full_path, rel_path, file_hash))
+
+        total_files = len(files_to_scan)
+        if total_files > 0:
+            self.progress_bar.set(0)
+            for i, (full_path, rel_path, f_hash) in enumerate(files_to_scan):
+                self.files_label.configure(text=f"Scanning: {i+1}/{total_files}")
+                self.progress_bar.set((i + 1) / total_files)
+                self.update_idletasks()
+
+                rules = parse_wazuh_xml(full_path, self.current_folder)
+                self.db.save_rules(rules)
+                self.db.update_file_state(rel_path, f_hash)
+            self.progress_bar.set(1)
+
+        self.refresh_table()
+
+    def refresh_table(self):
+        selected_cols = [col for col, var in self.column_vars.items() if var.get()]
+        search_term = self.search_entry.get()
+        data, columns = self.db.search_rules(search_term, target_columns=selected_cols, show_duplicates=self.showing_duplicates)
+
+        if set(columns) != set(self.column_vars.keys()):
+            self.update_filter_list(columns)
+
+        self.tree.delete(*self.tree.get_children())
+        self.tree["columns"] = columns
+        for col in columns:
+            self.tree.heading(col, text=col.replace("_", " ").title(), command=lambda _c=col: self.sort_column(_c))
+            self.tree.column(col, width=150, minwidth=100, stretch=False)
+
+        # Optimization: Insert in batches
+        def insert_batch(start_idx):
+            if not self.tree.winfo_exists(): return
+            end_idx = min(start_idx + 150, len(data))
+            for i in range(start_idx, end_idx):
+                self.tree.insert("", "end", values=data[i])
+
+            if end_idx < len(data):
+                self.after(10, lambda: insert_batch(end_idx))
+            else:
+                self.update_stats(len(data))
+
+        insert_batch(0)
+
+    def update_stats(self, rule_count):
+        self.stats_label.configure(text=f"Rules: {rule_count}")
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM file_states")
+            file_count = cursor.fetchone()[0]
+            self.files_label.configure(text=f"Files: {file_count}")
 
 class RuleDialog(ctk.CTkToplevel):
     def __init__(self, parent, title="Rule Dialog", initial_data=None, columns=None):
@@ -339,6 +722,55 @@ class AdvancedImportDialog(ctk.CTkToplevel):
         self.btn_frame.pack(pady=20)
         ctk.CTkButton(self.btn_frame, text="Approve", command=self.approve, fg_color="#5cb85c").pack(side="left", padx=10)
         ctk.CTkButton(self.btn_frame, text="Cancel", command=self.destroy, fg_color="#d9534f").pack(side="left", padx=10)
+    def approve(self):
+        self.approved = True
+        self.destroy()
+
+class AdvancedImportDialog(ctk.CTkToplevel):
+    def __init__(self, parent, rules):
+        super().__init__(parent)
+        self.title("Approve Advanced Import")
+        self.geometry("1000x700")
+        self.rules = rules
+        self.approved = False
+
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        self.main_container = ctk.CTkFrame(self)
+        self.main_container.pack(fill="both", expand=True, padx=20, pady=20)
+
+        self.label = ctk.CTkLabel(self.main_container, text=f"Previewing {len(rules)} rules. Do you want to import them?", font=ctk.CTkFont(size=14, weight="bold"))
+        self.label.pack(pady=10)
+
+        # Table for preview
+        self.tree_frame = ctk.CTkFrame(self.main_container)
+        self.tree_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        cols = ["rule_id", "level", "description", "group", "filename"]
+        self.tree = ttk.Treeview(self.tree_frame, columns=cols, show="headings")
+        for col in cols:
+            self.tree.heading(col, text=col.replace("_", " ").title())
+            self.tree.column(col, width=150)
+
+        self.tree.pack(side="left", fill="both", expand=True)
+        self.scrollbar = ctk.CTkScrollbar(self.tree_frame, orientation="vertical", command=self.tree.yview)
+        self.scrollbar.pack(side="right", fill="y")
+        self.tree.configure(yscrollcommand=self.scrollbar.set)
+
+        for rule in rules:
+            vals = [rule.get(c, "") for c in cols]
+            self.tree.insert("", "end", values=vals)
+
+        self.button_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        self.button_frame.pack(pady=10)
+
+        self.approve_btn = ctk.CTkButton(self.button_frame, text="Approve & Import", command=self.approve, fg_color="#5cb85c", hover_color="#4cae4c")
+        self.approve_btn.pack(side="left", padx=10)
+
+        self.cancel_btn = ctk.CTkButton(self.button_frame, text="Cancel", command=self.destroy, fg_color="#d9534f", hover_color="#c9302c")
+        self.cancel_btn.pack(side="left", padx=10)
+
     def approve(self):
         self.approved = True
         self.destroy()

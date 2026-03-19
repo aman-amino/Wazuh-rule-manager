@@ -441,8 +441,18 @@ class App(ctk.CTk):
         dialog = RuleDialog(self, title="Edit Rule", initial_data=rule, columns=self.db.get_columns())
         self.wait_window(dialog)
         if dialog.result:
-            update_rule_xml(rule["rule_id"], dialog.result, os.path.join(self.current_folder, rule["relative_path"]))
-            self.scan_rules()
+            filepath = os.path.join(self.current_folder, rule_data["relative_path"])
+            try:
+                # Save to history before updating if possible
+                old_raw = rule_data.get("raw_xml")
+                if old_raw:
+                    self.db.add_to_history(rule_data["rule_id"], rule_data["relative_path"], old_raw)
+
+                update_rule_xml(rule_data["rule_id"], dialog.result, filepath)
+                messagebox.showinfo("Success", "Rule updated successfully.")
+                self.scan_rules()
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to update rule: {e}")
 
     def clone_rule(self):
         sel = self.tree.selection()
@@ -680,29 +690,117 @@ class App(ctk.CTk):
             self.files_label.configure(text=f"Files: {file_count}")
 
 class RuleDialog(ctk.CTkToplevel):
-    def __init__(self, parent, title="Rule Dialog", initial_data=None, columns=None):
+    def __init__(self, parent, title="Rule Dialog", initial_data=None, columns=None, db=None):
         super().__init__(parent)
         self.title(title)
-        self.geometry("600x800")
+        self.geometry("800x900")
         self.result = None
         self.initial_data = initial_data or {}
-        self.scroll = ctk.CTkScrollableFrame(self)
-        self.scroll.pack(fill="both", expand=True, padx=20, pady=20)
-        self.entries = {}
-        excluded = ["id", "is_rule", "filename", "relative_path"]
-        fields = ["rule_id", "level", "description", "group"]
+        self.db = db
+
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        self.main_container = ctk.CTkFrame(self)
+        self.main_container.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # XML Editor Section (Top)
+        self.xml_label = ctk.CTkLabel(self.main_container, text="Raw XML Editor", font=ctk.CTkFont(weight="bold"))
+        self.xml_label.pack(side="top", anchor="w", padx=10, pady=(0, 5))
+
+        self.xml_editor = ctk.CTkTextbox(self.main_container, height=300, font=("Courier New", 12))
+        self.xml_editor.pack(side="top", fill="x", padx=10, pady=(0, 10))
+        if self.initial_data.get("raw_xml"):
+            self.xml_editor.insert("1.0", self.initial_data["raw_xml"])
+
+        # Bottom frame for action buttons
+        self.button_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        self.button_frame.pack(side="bottom", fill="x", pady=(0, 10))
+
+        self.save_btn = ctk.CTkButton(self.button_frame, text="Save Rule", command=self.save)
+        self.save_btn.pack(side="left", padx=10, pady=10)
+
+        if self.db and self.initial_data.get("rule_id"):
+             self.history_btn = ctk.CTkButton(self.button_frame, text="View History", command=self.show_history, fg_color="gray")
+             self.history_btn.pack(side="left", padx=10, pady=10)
+
+        self.custom_field_frame = ctk.CTkFrame(self.main_container)
+        self.custom_field_frame.pack(side="bottom", fill="x", padx=10, pady=(0, 10))
+
+        self.new_field_entry = ctk.CTkEntry(self.custom_field_frame, placeholder_text="New field name")
+        self.new_field_entry.pack(side="left", fill="x", expand=True, padx=5, pady=5)
+
+        self.add_field_btn = ctk.CTkButton(self.custom_field_frame, text="Add Field", width=80, command=self.add_custom_field)
+        self.add_field_btn.pack(side="right", padx=5, pady=5)
+
+        self.scrollable_frame = ctk.CTkScrollableFrame(self.main_container, label_text="Rule Attributes (Auto-indexed)")
+        self.scrollable_frame.pack(side="top", fill="both", expand=True, padx=10, pady=10)
+        self.scrollable_frame.grid_columnconfigure(1, weight=1)
+
+        excluded = ["id", "is_rule", "filename", "relative_path", "raw_xml"]
+        self.fields = ["rule_id", "group", "cloned_from"]
         if columns:
-            for c in columns:
-                if c not in excluded and c not in fields: fields.append(c)
-        for i, f in enumerate(fields):
-            ctk.CTkLabel(self.scroll, text=f.replace("_"," ").title()).grid(row=i, column=0, padx=10, pady=5, sticky="w")
-            e = ctk.CTkEntry(self.scroll, width=300)
-            e.grid(row=i, column=1, padx=10, pady=5, sticky="ew")
-            if f in self.initial_data: e.insert(0, str(self.initial_data[f]))
-            self.entries[f] = e
-        ctk.CTkButton(self, text="Save", command=self.save).pack(pady=20)
+            for col in columns:
+                if col not in excluded and col not in self.fields:
+                    self.fields.append(col)
+
+        for key in self.initial_data.keys():
+            if key not in excluded and key not in self.fields:
+                self.fields.append(key)
+
+        self.entries = {}
+        for i, field in enumerate(self.fields):
+            self.add_field_row(field, i)
+
+    def add_field_row(self, field, row_idx, value=None):
+        display_name = field.replace("_", " ").title()
+        label = ctk.CTkLabel(self.scrollable_frame, text=display_name)
+        label.grid(row=row_idx, column=0, padx=10, pady=5, sticky="w")
+
+        entry = ctk.CTkEntry(self.scrollable_frame)
+        entry.grid(row=row_idx, column=1, padx=10, pady=5, sticky="ew")
+
+        if value is not None:
+            entry.insert(0, str(value))
+        elif field in self.initial_data:
+            entry.insert(0, str(self.initial_data[field]))
+
+        self.entries[field] = entry
+
+    def add_custom_field(self):
+        new_field = self.new_field_entry.get().strip().lower().replace(" ", "_")
+        if not new_field: return
+        if new_field in self.entries:
+            messagebox.showwarning("Warning", f"Field '{new_field}' already exists.")
+            return
+        self.add_field_row(new_field, len(self.entries))
+        self.new_field_entry.delete(0, tk.END)
+
+    def show_history(self):
+        if not self.db:
+            return
+
+        history = self.db.get_history(self.initial_data["rule_id"], self.initial_data["relative_path"])
+        if not history:
+            messagebox.showinfo("History", "No previous versions found for this rule.")
+            return
+
+        HistoryWindow(self, history, self.xml_editor)
+        # To be implemented in next step
 
     def save(self):
+        raw_xml = self.xml_editor.get("1.0", "end").strip()
+        if not raw_xml:
+            messagebox.showerror("Error", "XML content cannot be empty.")
+            return
+
+        try:
+            import xml.etree.ElementTree as ET
+            ET.fromstring(raw_xml)
+        except Exception as e:
+            messagebox.showerror("XML Error", f"Invalid XML: {e}")
+            return
+
         self.result = {k: v.get() for k, v in self.entries.items() if v.get()}
         self.destroy()
 
@@ -725,7 +823,6 @@ class AdvancedImportDialog(ctk.CTkToplevel):
     def approve(self):
         self.approved = True
         self.destroy()
-
 class AdvancedImportDialog(ctk.CTkToplevel):
     def __init__(self, parent, rules):
         super().__init__(parent)
@@ -774,3 +871,70 @@ class AdvancedImportDialog(ctk.CTkToplevel):
     def approve(self):
         self.approved = True
         self.destroy()
+
+
+class HistoryWindow(ctk.CTkToplevel):
+    def __init__(self, parent, history_data, editor_widget):
+        super().__init__(parent)
+        self.title("Rule History")
+        self.geometry("900x600")
+        self.history_data = history_data
+        self.editor_widget = editor_widget
+
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+
+        self.label = ctk.CTkLabel(self, text="Select a version to compare/restore", font=ctk.CTkFont(size=14, weight="bold"))
+        self.label.grid(row=0, column=0, pady=10, sticky="ew")
+
+        self.main_container = ctk.CTkFrame(self)
+        self.main_container.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
+        self.main_container.grid_columnconfigure(0, weight=1)
+        self.main_container.grid_columnconfigure(1, weight=1)
+        self.main_container.grid_rowconfigure(0, weight=1)
+
+        # Left side: Version List
+        self.version_frame = ctk.CTkFrame(self.main_container)
+        self.version_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+
+        self.tree = ttk.Treeview(self.version_frame, columns=("id", "timestamp"), show="headings")
+        self.tree.heading("id", text="ID")
+        self.tree.heading("timestamp", text="Timestamp")
+        self.tree.pack(fill="both", expand=True)
+        self.tree.bind("<<TreeviewSelect>>", self.on_version_select)
+
+        for h in history_data:
+            self.tree.insert("", "end", values=(h[0], h[2]))
+
+        # Right side: Version Preview
+        self.preview_frame = ctk.CTkFrame(self.main_container)
+        self.preview_frame.grid(row=0, column=1, sticky="nsew")
+
+        self.preview_editor = ctk.CTkTextbox(self.preview_frame, font=("Courier New", 12))
+        self.preview_editor.pack(fill="both", expand=True, padx=5, pady=5)
+
+        # Bottom: Actions
+        self.button_frame = ctk.CTkFrame(self)
+        self.button_frame.grid(row=2, column=0, pady=15)
+
+        self.restore_btn = ctk.CTkButton(self.button_frame, text="Restore this version", command=self.restore, fg_color="#5cb85c", hover_color="#4cae4c")
+        self.restore_btn.pack(side="left", padx=10)
+
+        self.close_btn = ctk.CTkButton(self.button_frame, text="Close", command=self.destroy)
+        self.close_btn.pack(side="left", padx=10)
+
+    def on_version_select(self, event):
+        selected = self.tree.selection()
+        if not selected: return
+        idx = self.tree.index(selected[0])
+        raw_xml = self.history_data[idx][1]
+        self.preview_editor.delete("1.0", "end")
+        self.preview_editor.insert("1.0", raw_xml)
+
+    def restore(self):
+        raw_xml = self.preview_editor.get("1.0", "end").strip()
+        if not raw_xml: return
+        if messagebox.askyesno("Confirm Restore", "Are you sure you want to load this version into the editor? Current changes in the editor will be overwritten."):
+            self.editor_widget.delete("1.0", "end")
+            self.editor_widget.insert("1.0", raw_xml)
+            self.destroy()

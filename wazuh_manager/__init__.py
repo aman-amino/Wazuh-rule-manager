@@ -1,1 +1,1 @@
-DB_NAME = "wazuh_rules_v2.db"
+DB_NAME = "wazuh_rules.db"

@@ -320,7 +320,12 @@ class App(ctk.CTk):
                                   anchor="nw", justify="left",
                                   wraplength=250)
             val_lbl.pack(fill="both", expand=True, padx=10, pady=8)
-            # Fill Quick Editor on the right
+        fields = all_display_cols
+
+        for i, col in enumerate(fields):
+            val = self.current_selected_rule.get(col, "")
+            if val is None: val = ""
+
             label = ctk.CTkLabel(self.detail_scroll, text=col.replace("_", " ").title(), font=ctk.CTkFont(size=11))
             label.grid(row=idx, column=0, padx=5, pady=2, sticky="w")
 

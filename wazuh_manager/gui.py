@@ -73,6 +73,8 @@ class App(ctk.CTk):
         self.import_btn.pack(pady=4, padx=10, fill="x")
         self.backup_btn = ctk.CTkButton(self.tools_frame, text="📦 Full Backup", command=self.full_backup, height=32)
         self.backup_btn.pack(pady=4, padx=10, fill="x")
+        self.adv_import_btn = ctk.CTkButton(self.tools_frame, text="🚀 Advanced Import", command=self.advanced_import_flow, height=32)
+        self.adv_import_btn.pack(pady=4, padx=10, fill="x")
 
         # Appearance Mode
         self.appearance_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
@@ -325,12 +327,11 @@ class App(ctk.CTk):
             if val is None: val = ""
 
             label = ctk.CTkLabel(self.detail_scroll, text=col.replace("_", " ").title(), font=ctk.CTkFont(size=11))
-            label.grid(row=i, column=0, padx=5, pady=2, sticky="w")
+            label.grid(row=idx, column=0, padx=5, pady=2, sticky="w")
 
             entry = ctk.CTkEntry(self.detail_scroll, height=25)
-            entry.grid(row=i, column=1, padx=5, pady=2, sticky="ew")
-            entry.insert(0, str(val))
-            
+            entry.grid(row=idx, column=1, padx=5, pady=2, sticky="ew")
+            entry.insert(0, str(val) if val != "None" else "")
             self.detail_entries[col] = entry
 
     def update_filter_list(self, columns):
@@ -560,6 +561,50 @@ class App(ctk.CTk):
             messagebox.showinfo("Success", f"Full backup saved to {filepath}")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to create backup: {e}")
+
+    def advanced_import_flow(self):
+        if not self.current_folder:
+            messagebox.showwarning("Warning", "Please select a target folder first.")
+            return
+
+        filepath = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
+        if not filepath:
+            return
+
+        try:
+            from wazuh_manager.advanced_importer import csv_to_json_rules
+            rules = csv_to_json_rules(filepath)
+
+            if not rules:
+                messagebox.showinfo("Advanced Import", "No valid rules found in the CSV.")
+                return
+
+            dialog = AdvancedImportDialog(self, rules)
+            self.wait_window(dialog)
+
+            if dialog.approved:
+                # Group rules by their destination filename
+                files_to_create = {}
+                for rule in rules:
+                    fname = rule.get("filename") or rule.get("relative_path")
+                    if not fname or not fname.endswith(".xml"):
+                        fname = f"adv_imported_{os.path.basename(filepath).split('.')[0]}.xml"
+
+                    if fname not in files_to_create:
+                        files_to_create[fname] = []
+                    files_to_create[fname].append(rule)
+
+                from wazuh_manager.parser import save_rules_to_xml
+                count = 0
+                for fname, rules_group in files_to_create.items():
+                    dest_path = os.path.join(self.current_folder, os.path.basename(fname))
+                    save_rules_to_xml(rules_group, dest_path)
+                    count += len(rules_group)
+
+                messagebox.showinfo("Success", f"Advanced Import complete. Imported {count} rules into {len(files_to_create)} files.")
+                self.scan_rules()
+        except Exception as e:
+            messagebox.showerror("Error", f"Advanced Import failed: {e}")
     def scan_rules(self):
         if not self.current_folder:
             return
@@ -707,4 +752,53 @@ class RuleDialog(ctk.CTkToplevel):
         if not self.result.get("rule_id"):
             messagebox.showwarning("Warning", "Rule ID is required.")
             return
+        self.destroy()
+
+class AdvancedImportDialog(ctk.CTkToplevel):
+    def __init__(self, parent, rules):
+        super().__init__(parent)
+        self.title("Approve Advanced Import")
+        self.geometry("1000x700")
+        self.rules = rules
+        self.approved = False
+
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        self.main_container = ctk.CTkFrame(self)
+        self.main_container.pack(fill="both", expand=True, padx=20, pady=20)
+
+        self.label = ctk.CTkLabel(self.main_container, text=f"Previewing {len(rules)} rules. Do you want to import them?", font=ctk.CTkFont(size=14, weight="bold"))
+        self.label.pack(pady=10)
+
+        # Table for preview
+        self.tree_frame = ctk.CTkFrame(self.main_container)
+        self.tree_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        cols = ["rule_id", "level", "description", "group", "filename"]
+        self.tree = ttk.Treeview(self.tree_frame, columns=cols, show="headings")
+        for col in cols:
+            self.tree.heading(col, text=col.replace("_", " ").title())
+            self.tree.column(col, width=150)
+
+        self.tree.pack(side="left", fill="both", expand=True)
+        self.scrollbar = ctk.CTkScrollbar(self.tree_frame, orientation="vertical", command=self.tree.yview)
+        self.scrollbar.pack(side="right", fill="y")
+        self.tree.configure(yscrollcommand=self.scrollbar.set)
+
+        for rule in rules:
+            vals = [rule.get(c, "") for c in cols]
+            self.tree.insert("", "end", values=vals)
+
+        self.button_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        self.button_frame.pack(pady=10)
+
+        self.approve_btn = ctk.CTkButton(self.button_frame, text="Approve & Import", command=self.approve, fg_color="#5cb85c", hover_color="#4cae4c")
+        self.approve_btn.pack(side="left", padx=10)
+
+        self.cancel_btn = ctk.CTkButton(self.button_frame, text="Cancel", command=self.destroy, fg_color="#d9534f", hover_color="#c9302c")
+        self.cancel_btn.pack(side="left", padx=10)
+
+    def approve(self):
+        self.approved = True
         self.destroy()

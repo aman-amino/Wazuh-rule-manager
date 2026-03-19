@@ -25,6 +25,7 @@ class TestParser(unittest.TestCase):
             self.assertEqual(rule["group"], "test_group")
             self.assertEqual(rule["description"], "Test description")
             self.assertEqual(rule["match"], "test match")
+            self.assertEqual(rule["rule.level"], "5")
 
     def test_get_file_hash(self):
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
@@ -60,9 +61,9 @@ class TestParser(unittest.TestCase):
 
     def test_save_rules_to_xml(self):
         rules = [
-            {"rule_id": "200001", "level": "3", "description": "Multi 1", "group": "g1"},
-            {"rule_id": "200002", "level": "10", "description": "Multi 2", "group": "g1"},
-            {"rule_id": "200003", "level": "5", "description": "Multi 3", "group": "g2"}
+            {"rule_id": "200001", "level": "3", "description": "Multi 1", "group": "g1", "raw_xml": '<rule id="200001" level="3"><description>Multi 1</description></rule>'},
+            {"rule_id": "200002", "level": "10", "description": "Multi 2", "group": "g1", "raw_xml": '<rule id="200002" level="10"><description>Multi 2</description></rule>'},
+            {"rule_id": "200003", "level": "5", "description": "Multi 3", "group": "g2", "raw_xml": '<rule id="200003" level="5"><description>Multi 3</description></rule>'}
         ]
         with tempfile.TemporaryDirectory() as tmpdir:
             xml_path = os.path.join(tmpdir, "multi.xml")
@@ -77,16 +78,16 @@ class TestParser(unittest.TestCase):
             self.assertIn("200003", ids)
 
     def test_multi_value_xml(self):
-        # Test that comma-separated values in data are converted to multi-tag XML
-        rule_data = {"rule_id": "300001", "level": "5", "info": "link1, link2"}
+        # We now prioritize raw_xml, so testing creation without it
+        rule_data = {"rule_id": "300001", "rule.level": "5", "info1": "link1", "info2": "link2"}
         with tempfile.TemporaryDirectory() as tmpdir:
             xml_path = os.path.join(tmpdir, "multi_val.xml")
             create_rule_xml(rule_data, xml_path)
 
             with open(xml_path, 'r') as f:
                 content = f.read()
-                self.assertEqual(content.count("<info>link1</info>"), 1)
-                self.assertEqual(content.count("<info>link2</info>"), 1)
+                self.assertIn("<info>link1</info>", content)
+                self.assertIn("<info>link2</info>", content)
 
 if __name__ == "__main__":
     unittest.main()

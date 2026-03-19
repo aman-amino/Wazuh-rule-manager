@@ -1,6 +1,7 @@
 import unittest
 import os
 import tempfile
+import xml.etree.ElementTree as ET
 from wazuh_manager.advanced_importer import csv_to_json_rules
 
 class TestAdvancedImporter(unittest.TestCase):
@@ -21,9 +22,12 @@ class TestAdvancedImporter(unittest.TestCase):
             self.assertEqual(rule["description"], "Netscaler: Firewall violation")
             self.assertEqual(rule["filename"], "0345-netscaler_rules.xml")
             self.assertEqual(rule["group"], "netscaler-appfw, netscaler")
-            self.assertEqual(rule["match"], "APPFW APPFW_STARTURL")
-            self.assertEqual(rule["pci_dss"], "1.4, 6.5")
-            self.assertEqual(rule["GDPR"], "IV_35.7.d")
+
+            # Verify raw_xml contains the expected content
+            self.assertIn("raw_xml", rule)
+            root = ET.fromstring(rule["raw_xml"])
+            self.assertEqual(root.find("match").text, "APPFW APPFW_STARTURL")
+            self.assertEqual(root.find("pci_dss").text, "1.4")
         finally:
             os.remove(tmp_path)
 

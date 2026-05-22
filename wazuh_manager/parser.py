@@ -1,6 +1,7 @@
 import os
 import hashlib
 import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as det
 import re
 import csv
 
@@ -12,7 +13,7 @@ def _parse_multi_root_xml(filepath):
     # Remove XML declaration if present to avoid conflicts when wrapping
     xml_content = re.sub(r'<\?xml.*?\?>', '', xml_content)
     wrapped_xml = f"<root>{xml_content}</root>"
-    return ET.fromstring(wrapped_xml)
+    return det.fromstring(wrapped_xml)
 
 def _write_multi_root_xml(root, filepath):
     """Writes back a multi-root structure by stripping the wrapper."""
@@ -119,7 +120,7 @@ def create_rule_xml(rule_data, filepath):
     if rule_data.get("raw_xml"):
         try:
             # Validate it's proper XML fragment
-            rule_elem = ET.fromstring(rule_data["raw_xml"])
+            rule_elem = det.fromstring(rule_data["raw_xml"])
 
             # Wrap in group if group is specified
             root = ET.Element("group")
@@ -186,7 +187,7 @@ def update_rule_xml(rule_id, updated_data, filepath):
 
     if updated_data.get("raw_xml"):
         try:
-            new_rule_elem = ET.fromstring(updated_data["raw_xml"])
+            new_rule_elem = det.fromstring(updated_data["raw_xml"])
             parent = parent_map[target_rule]
             # Find the actual index in parent children
             for idx, child in enumerate(parent):
@@ -277,7 +278,7 @@ def save_rules_to_xml(rules_data, filepath):
         for r_data in rules:
             if r_data.get("raw_xml"):
                 try:
-                    rule_elem = ET.fromstring(r_data["raw_xml"])
+                    rule_elem = det.fromstring(r_data["raw_xml"])
                     group_elem.append(rule_elem)
                     continue
                 except:

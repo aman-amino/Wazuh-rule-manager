@@ -621,7 +621,8 @@ class RuleDialog(ctk.CTkToplevel):
 
         try:
             import xml.etree.ElementTree as ET
-            ET.fromstring(raw_xml)
+            import defusedxml.ElementTree as det
+            det.fromstring(raw_xml)
         except Exception as e:
             messagebox.showerror("XML Error", f"Invalid XML: {e}")
             return

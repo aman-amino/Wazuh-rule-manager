@@ -1,3 +1,4 @@
+import re
 import sqlite3
 from datetime import datetime
 
@@ -5,6 +6,13 @@ class DatabaseManager:
     def __init__(self, db_path):
         self.db_path = db_path
         self.init_db()
+    def sanitize_column_name(self, name):
+        """Sanitizes column names to prevent SQL injection."""
+        sanitized = re.sub(r'[^a-zA-Z0-9_.]', '', name)
+        if sanitized and sanitized[0].isdigit():
+            sanitized = "_" + sanitized
+        return sanitized
+
 
     def get_connection(self):
         return sqlite3.connect(self.db_path)
@@ -59,6 +67,7 @@ class DatabaseManager:
 
     def ensure_column(self, column_name):
         columns = self.get_columns()
+        column_name = self.sanitize_column_name(column_name)
         if column_name not in columns:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
@@ -69,6 +78,13 @@ class DatabaseManager:
     def save_rules(self, rules_data):
         if not rules_data:
             return
+
+        # Sanitize all keys in rules_data
+        sanitized_rules = []
+        for rule in rules_data:
+            sanitized_rule = {self.sanitize_column_name(k): v for k, v in rule.items()}
+            sanitized_rules.append(sanitized_rule)
+        rules_data = sanitized_rules
 
         # Ensure all columns exist
         all_keys = set()
